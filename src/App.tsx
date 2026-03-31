@@ -87,6 +87,7 @@ export default function App() {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isLightMode, setIsLightMode] = useState<boolean>(false);
   const [view, setView] = useState<'tutor' | 'history'>('tutor');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'history'>('dashboard');
   const [learningGoal, setLearningGoal] = useState<string>("General English");
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -204,38 +205,44 @@ export default function App() {
       </AnimatePresence>
 
       {/* Always-visible app canvas */}
-      <div className="absolute inset-0 flex flex-col-reverse md:flex-row w-full h-full z-10 bg-white overflow-hidden">
-        {/* Code Panel / History Panel */}
-        <AnimatePresence>
-          {showCode && (
+      <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 bg-white overflow-hidden">
+        {/* Sidebar / Panel (Desktop: Side, Mobile: Full Screen based on tab) */}
+        <AnimatePresence mode="wait">
+          {(!isMobile || activeTab !== 'dashboard') && (
             <motion.div
-              initial={{ [isMobile ? 'height' : 'width']: 0, opacity: 0 }}
-              animate={{ 
-                [isMobile ? 'height' : 'width']: isMobile ? '40%' : '33.333333%', 
-                [isMobile ? 'width' : 'height']: '100%',
-                opacity: 1 
-              }}
-              exit={{ [isMobile ? 'height' : 'width']: 0, opacity: 0 }}
+              key={isMobile ? activeTab : 'sidebar'}
+              initial={isMobile ? { opacity: 0, y: 20 } : { width: 0, opacity: 0 }}
+              animate={isMobile 
+                ? { opacity: 1, y: 0, width: '100%', height: '100%' } 
+                : { width: showCode ? '33.333333%' : 0, opacity: showCode ? 1 : 0, height: '100%' }
+              }
+              exit={isMobile ? { opacity: 0, y: 20 } : { width: 0, opacity: 0 }}
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              className={`border-t md:border-t-0 md:border-r border-zinc-200 overflow-hidden p-6 shadow-inner shrink-0 flex flex-col ${isLightMode ? 'bg-zinc-50' : 'bg-zinc-950'}`}
+              className={`overflow-hidden p-6 shadow-inner shrink-0 flex flex-col ${isLightMode ? 'bg-zinc-50' : 'bg-zinc-950'} ${!isMobile && 'border-r border-zinc-200'}`}
             >
               <div className="flex items-center justify-between mb-4 shrink-0">
                 <div className="flex gap-4">
                   <button 
-                    onClick={() => setView('tutor')}
-                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${view === 'tutor' ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
+                    onClick={() => {
+                      setView('tutor');
+                      if (isMobile) setActiveTab('chat');
+                    }}
+                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${(isMobile ? activeTab === 'chat' : view === 'tutor') ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
                   >
                     Transcript
                   </button>
                   <button 
-                    onClick={() => setView('history')}
-                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${view === 'history' ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
+                    onClick={() => {
+                      setView('history');
+                      if (isMobile) setActiveTab('history');
+                    }}
+                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${(isMobile ? activeTab === 'history' : view === 'history') ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
                   >
                     History
                   </button>
                 </div>
                 
-                {view === 'tutor' && (
+                {(isMobile ? activeTab === 'chat' : view === 'tutor') && (
                   <div className="relative group">
                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-all ${isLightMode ? 'bg-white border-zinc-200 text-zinc-600' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>
                       <Target className="w-3 h-3" />
@@ -257,9 +264,9 @@ export default function App() {
               <div 
                 ref={transcriptContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto custom-scrollbar relative"
+                className="flex-1 overflow-y-auto custom-scrollbar relative pb-24 md:pb-4"
               >
-                {view === 'tutor' ? (
+                {(isMobile ? activeTab === 'chat' : view === 'tutor') ? (
                   <div className="space-y-4 pr-2 pb-4">
                     {transcript.length === 0 ? (
                       <div className={`text-xs italic ${isLightMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
@@ -295,7 +302,7 @@ export default function App() {
                     <div ref={transcriptEndRef} />
                   </div>
                 ) : (
-                  <div className="space-y-6 pr-2">
+                  <div className="space-y-6 pr-2 pb-4">
                     {sessions.length === 0 ? (
                       <div className={`text-xs italic ${isLightMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
                         No past sessions yet. Complete a session to see it here.
@@ -379,136 +386,160 @@ export default function App() {
                 
                 {/* Scroll to Bottom Button */}
                 <AnimatePresence>
-                  {showScrollButton && view === 'tutor' && transcript.length > 0 && (
+                  {showScrollButton && (isMobile ? activeTab === 'chat' : view === 'tutor') && transcript.length > 0 && (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       onClick={scrollToBottom}
-                      className={`absolute bottom-4 right-6 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all ${isLightMode ? 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'}`}
+                      className={`absolute bottom-24 md:bottom-4 right-6 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all ${isLightMode ? 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'}`}
                     >
                       <ArrowDown className="w-4 h-4" />
                     </motion.button>
                   )}
                 </AnimatePresence>
               </div>
-              <div className="mt-6 shrink-0 text-center">
-                <p className={`text-[10px] ${isLightMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                  {view === 'tutor' ? 'Ngenglish siap bantuin kamu belajar.' : 'Review progress dan percakapan lama kamu.'}
-                </p>
-              </div>
+              {!isMobile && (
+                <div className="mt-6 shrink-0 text-center">
+                  <p className={`text-[10px] ${isLightMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                    {view === 'tutor' ? 'Ngenglish siap bantuin kamu belajar.' : 'Review progress dan percakapan lama kamu.'}
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Preview Panel */}
-        <div className="flex-1 w-full relative bg-white min-h-0 min-w-0 flex flex-col">
+        {/* Preview Panel (Dashboard) */}
+        <AnimatePresence mode="wait">
+          {(!isMobile || activeTab === 'dashboard') && (
+            <motion.div 
+              initial={isMobile ? { opacity: 0, scale: 0.95 } : false}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={isMobile ? { opacity: 0, scale: 0.95 } : false}
+              className="flex-1 w-full relative bg-white min-h-0 min-w-0 flex flex-col"
+            >
+              {!isMobile && (
+                <button
+                  onClick={() => setShowCode(!showCode)}
+                  className="absolute top-1/2 left-0 -translate-y-1/2 z-50 flex items-center justify-center w-6 h-14 bg-white border border-zinc-300 border-l-0 rounded-r-lg shadow-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 transition-all"
+                  title={showCode ? "Hide Sidebar" : "Show Sidebar"}
+                >
+                  {showCode ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+              )}
+              <iframe
+                srcDoc={appCode}
+                className="flex-1 w-full border-none"
+                title="Learning Dashboard"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Floating Mic Button */}
+      <motion.div 
+        layout
+        initial={false}
+        animate={{
+          left: isConnected ? (isMobile ? '50%' : '2rem') : '50%',
+          bottom: isConnected ? (isMobile ? '6rem' : '2rem') : (isMobile ? '7rem' : '6rem'),
+          x: '-50%',
+          scale: isConnected && isMobile ? 0.9 : 1
+        }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+        className="absolute z-50"
+      >
+        <div className="relative group">
+          {/* Audio Level Ring */}
+          {isConnected && (
+            <motion.div
+              className="absolute rounded-full border-2 pointer-events-none"
+              style={{
+                inset: '-6px',
+                borderColor: isModelSpeaking 
+                  ? 'rgba(59, 130, 246, 0.5)' 
+                  : (isLightMode ? 'rgba(239, 68, 68, 0.4)' : 'rgba(24, 24, 27, 0.3)'),
+              }}
+              animate={{ 
+                scale: isModelSpeaking ? [1, 1.15, 1] : ringScale,
+                opacity: isModelSpeaking ? [0.4, 0.8, 0.4] : Math.min(audioLevel * 10, 1),
+              }}
+              transition={isModelSpeaking ? { duration: 1.2, repeat: Infinity } : { duration: 0.05 }}
+            />
+          )}
+
+          {/* Pulse effect when connected */}
+          {isConnected && (
+            <motion.div
+              animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className={`absolute -inset-4 rounded-full ${isLightMode ? 'bg-red-500/20' : 'bg-zinc-900/20'}`}
+            />
+          )}
+          
           <button
-            onClick={() => setShowCode(!showCode)}
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 md:bottom-auto md:top-1/2 md:left-0 md:-translate-y-1/2 md:translate-x-0 z-50 flex items-center justify-center w-14 h-6 md:w-6 md:h-14 bg-white border border-zinc-300 border-b-0 md:border-b md:border-l-0 rounded-t-lg md:rounded-t-none md:rounded-r-lg shadow-md text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 transition-all"
-            title={showCode ? "Hide Code" : "Show Code"}
+            onClick={isConnected ? disconnect : connect}
+            disabled={isConnecting}
+            className={`
+              relative flex items-center justify-center rounded-full 
+              transition-all duration-500
+              ${isConnected 
+                ? (isLightMode ? 'bg-white text-red-500 border border-red-100 w-12 h-12 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-zinc-800 text-red-400 border border-zinc-700 w-12 h-12 shadow-[0_20px_50px_rgba(0,0,0,0.3)]') 
+                : (isLightMode ? 'bg-white text-zinc-900 hover:scale-105 active:scale-95 border border-zinc-100 w-16 h-16 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-zinc-900 text-white hover:scale-105 active:scale-95 border border-zinc-800 w-16 h-16 shadow-[0_20px_50px_rgba(0,0,0,0.3)]')
+              }
+              ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            `}
           >
-            {isMobile ? (
-              showCode ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />
+            {isConnecting ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : isConnected ? (
+              <MicOff className="w-5 h-5" />
             ) : (
-              showCode ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+              <Mic className="w-6 h-6" />
             )}
           </button>
-          <iframe
-            srcDoc={appCode}
-            className="flex-1 w-full border-none"
-            title="Learning Dashboard"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-          />
-
-          {/* Floating Mic Button - Now inside Preview Panel */}
-          <motion.div 
-            layout
-            initial={false}
-            animate={{
-              left: isConnected ? '2rem' : '50%',
-              bottom: isConnected ? '2rem' : '6rem',
-              x: isConnected ? '0%' : '-50%',
-            }}
-            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-            className="absolute z-50"
-          >
-            <div className="relative group">
-              {/* Audio Level Ring */}
-              {isConnected && (
-                <motion.div
-                  className="absolute rounded-full border-2 pointer-events-none"
-                  style={{
-                    inset: '-6px',
-                    borderColor: isModelSpeaking 
-                      ? 'rgba(59, 130, 246, 0.5)' 
-                      : (isLightMode ? 'rgba(239, 68, 68, 0.4)' : 'rgba(24, 24, 27, 0.3)'),
-                  }}
-                  animate={{ 
-                    scale: isModelSpeaking ? [1, 1.15, 1] : ringScale,
-                    opacity: isModelSpeaking ? [0.4, 0.8, 0.4] : Math.min(audioLevel * 10, 1),
-                  }}
-                  transition={isModelSpeaking ? { duration: 1.2, repeat: Infinity } : { duration: 0.05 }}
-                />
-              )}
-
-              {/* Pulse effect when connected */}
-              {isConnected && (
-                <motion.div
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className={`absolute -inset-4 rounded-full ${isLightMode ? 'bg-red-500/20' : 'bg-zinc-900/20'}`}
-                />
-              )}
-              
-              <button
-                onClick={isConnected ? disconnect : connect}
-                disabled={isConnecting}
-                className={`
-                  relative flex items-center justify-center rounded-full 
-                  transition-all duration-500
-                  ${isConnected 
-                    ? (isLightMode ? 'bg-white text-red-500 border border-red-100 w-12 h-12 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-zinc-800 text-red-400 border border-zinc-700 w-12 h-12 shadow-[0_20px_50px_rgba(0,0,0,0.3)]') 
-                    : (isLightMode ? 'bg-white text-zinc-900 hover:scale-105 active:scale-95 border border-zinc-100 w-16 h-16 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-zinc-900 text-white hover:scale-105 active:scale-95 border border-zinc-800 w-16 h-16 shadow-[0_20px_50px_rgba(0,0,0,0.3)]')
-                  }
-                  ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                `}
-              >
-                {isConnecting ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                ) : isConnected ? (
-                  <MicOff className="w-5 h-5" />
-                ) : (
-                  <Mic className="w-6 h-6" />
-                )}
-              </button>
-              
-              {/* Status Label */}
-              <AnimatePresence>
-                {!isConnected && !isConnecting && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.2em] pl-[0.2em] text-zinc-400"
-                  >
-                  </motion.div>
-                )}
-                {isConnecting && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.2em] pl-[0.2em] text-zinc-400"
-                  >
-                    Initializing...
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <div className={`absolute bottom-0 left-0 right-0 h-20 z-[60] flex items-center justify-around px-6 border-t shadow-[0_-10px_30px_rgba(0,0,0,0.05)] ${isLightMode ? 'bg-white/80 backdrop-blur-lg border-zinc-100' : 'bg-zinc-950/80 backdrop-blur-lg border-zinc-800'}`}>
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'dashboard' ? 'text-blue-500 scale-110' : 'text-zinc-400'}`}
+          >
+            <Sun className={`w-5 h-5 ${activeTab === 'dashboard' ? 'fill-blue-500/10' : ''}`} />
+            <span className="text-[9px] font-bold uppercase tracking-widest">Board</span>
+          </button>
+          
+          <div className="w-12" /> {/* Spacer for Mic button */}
+
+          <button 
+            onClick={() => {
+              setActiveTab('chat');
+              setView('tutor');
+            }}
+            className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'chat' ? 'text-blue-500 scale-110' : 'text-zinc-400'}`}
+          >
+            <History className="w-5 h-5" />
+            <span className="text-[9px] font-bold uppercase tracking-widest">Chat</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              setActiveTab('history');
+              setView('history');
+            }}
+            className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'history' ? 'text-blue-500 scale-110' : 'text-zinc-400'}`}
+          >
+            <BookOpen className="w-5 h-5" />
+            <span className="text-[9px] font-bold uppercase tracking-widest">History</span>
+          </button>
+        </div>
+      )}
 
       {/* Top Right Controls */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
