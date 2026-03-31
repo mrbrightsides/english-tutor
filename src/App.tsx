@@ -131,15 +131,50 @@ export default function App() {
         learnedItems: [...learnedItems]
       };
       
-      const updatedSessions = [newSession, ...sessions];
-      setSessions(updatedSessions);
-      localStorage.setItem('english_tutor_sessions', JSON.stringify(updatedSessions));
+      setSessions(prev => {
+        const updated = [newSession, ...prev];
+        localStorage.setItem('english_tutor_sessions', JSON.stringify(updated));
+        return updated;
+      });
       
       // Clear current session data for next time
       setTranscript([]);
       setLearnedItems([]);
+      localStorage.removeItem('ngenglish_current_transcript');
+      localStorage.removeItem('ngenglish_current_learned');
     }
   }, [isConnected]);
+
+  // Auto-save current session to a temporary storage to prevent data loss
+  useEffect(() => {
+    if (isConnected && transcript.length > 0) {
+      localStorage.setItem('ngenglish_current_transcript', JSON.stringify(transcript));
+    }
+  }, [transcript, isConnected]);
+
+  useEffect(() => {
+    if (isConnected && learnedItems.length > 0) {
+      localStorage.setItem('ngenglish_current_learned', JSON.stringify(learnedItems));
+    }
+  }, [learnedItems, isConnected]);
+
+  // Recover interrupted session
+  useEffect(() => {
+    const tempTranscript = localStorage.getItem('ngenglish_current_transcript');
+    const tempLearned = localStorage.getItem('ngenglish_current_learned');
+    if (tempTranscript && !isConnected) {
+      try {
+        const parsed = JSON.parse(tempTranscript);
+        if (parsed.length > 0) setTranscript(parsed);
+      } catch (e) {}
+    }
+    if (tempLearned && !isConnected) {
+      try {
+        const parsed = JSON.parse(tempLearned);
+        if (parsed.length > 0) setLearnedItems(parsed);
+      } catch (e) {}
+    }
+  }, []);
 
   useEffect(() => {
     if (transcriptEndRef.current && !showScrollButton) {
@@ -292,6 +327,13 @@ export default function App() {
                             <span className={`text-[10px] font-bold uppercase tracking-tighter ${entry.role === 'user' ? 'text-blue-500' : 'text-zinc-500'}`}>
                               {entry.role === 'user' ? 'You' : 'Ngenglish'}
                             </span>
+                            {i === transcript.length - 1 && isConnected && (
+                              <motion.div 
+                                animate={{ opacity: [0.4, 1, 0.4] }}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                                className="w-1 h-1 rounded-full bg-blue-500"
+                              />
+                            )}
                           </div>
                           <div className={`px-3 py-2 rounded-2xl text-xs leading-relaxed max-w-[90%] ${
                             entry.role === 'user' 
@@ -418,9 +460,9 @@ export default function App() {
         <AnimatePresence mode="wait">
           {(!isMobile || activeTab === 'dashboard') && (
             <motion.div 
-              initial={isMobile ? { opacity: 0, scale: 0.95 } : false}
+              initial={isMobile ? { opacity: 0, scale: 0.95 } : undefined}
               animate={{ opacity: 1, scale: 1 }}
-              exit={isMobile ? { opacity: 0, scale: 0.95 } : false}
+              exit={isMobile ? { opacity: 0, scale: 0.95 } : undefined}
               className="flex-1 w-full relative bg-white min-h-0 min-w-0 flex flex-col"
             >
               {!isMobile && (

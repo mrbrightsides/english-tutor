@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
+import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration, ThinkingLevel } from '@google/genai';
 
 export interface TranscriptEntry {
   role: 'user' | 'model';
@@ -7,9 +7,8 @@ export interface TranscriptEntry {
 }
 
 export interface LearnedItem {
-  type: 'vocabulary' | 'grammar';
   content: string;
-  timestamp: number;
+  type: 'vocabulary' | 'grammar' | 'pronunciation';
 }
 
 export function useLiveAPI(
@@ -35,6 +34,7 @@ export function useLiveAPI(
   const streamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const respondedToolCallsRef = useRef<Set<string>>(new Set());
+  const gainNodeRef = useRef<GainNode | null>(null);
 
   const cleanup = useCallback(() => {
     if (processorRef.current) {
@@ -57,8 +57,8 @@ export function useLiveAPI(
       }
       playbackContextRef.current = null;
     }
+    gainNodeRef.current = null;
     
-    // Close the session if it exists
     if (sessionRef.current) {
       if (typeof sessionRef.current.close === 'function') {
         sessionRef.current.close();
@@ -66,7 +66,6 @@ export function useLiveAPI(
       sessionRef.current = null;
     }
     
-    // Also handle the case where the session is still connecting
     if (sessionPromiseRef.current) {
       sessionPromiseRef.current.then(session => {
         if (session && typeof session.close === 'function') {
@@ -78,7 +77,6 @@ export function useLiveAPI(
   }, []);
 
   const connect = useCallback(async () => {
-    // Clean up any existing session before starting a new one
     cleanup();
     
     setIsConnecting(true);
@@ -89,11 +87,16 @@ export function useLiveAPI(
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+      gainNodeRef.current = playbackContextRef.current.createGain();
+      gainNodeRef.current.gain.value = 1.8; 
+      gainNodeRef.current.connect(playbackContextRef.current.destination);
+      
       nextPlayTimeRef.current = playbackContextRef.current.currentTime;
 
       const sessionPromise = ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseModalities: [Modality.AUDIO],
           outputAudioTranscription: {},
           inputAudioTranscription: {},
@@ -106,85 +109,24 @@ export function useLiveAPI(
           ${sessionsCount > 0 ? `This is a RETURNING USER. They have completed ${sessionsCount} sessions with you already.` : 'This is a NEW USER.'}
           ${learnedItemsList.length > 0 ? `Items they have learned so far: ${learnedItemsList.join(', ')}.` : ''}
 
-          Tailor all your conversations, vocabulary choices, and exercises to align with this goal.
-
-          When the user first connects:
-          - If they are a RETURNING USER, greet them like an old friend/mentor. Mention that it's great to see them again for their ${sessionsCount + 1}th session.
-          - If they are a NEW USER, introduce yourself as 'Ngenglish' and explain how you can help.
-          
-          Greet them in a mix of casual Indonesian and English (Jaksel style is fine if appropriate), and mention their current learning goal. 
-          Offer them a few options to start, such as:
-          - A casual conversation.
-          - An interactive quiz on a specific topic.
-          - A fill-in-the-blanks vocabulary exercise.
-          - An interactive story.
-          - A structured speaking exercise (like a role-play, image description, or text summary).
-
-          You can:
-          1. Practice conversation on various topics.
-          2. Correct grammar and provide specific pronunciation guidance. Analyze the user's pronunciation and provide constructive feedback on specific sounds or intonation. For example: "Your 'th' sound in 'three' was a bit like 's', try placing your tongue between your teeth."
-          3. Explain vocabulary and idioms.
-          4. Provide interactive exercises or quizzes.
-          5. Engage in interactive storytelling.
-          6. Conduct structured speaking exercises (role-play, image description, text summary).
+          Greet them in a mix of casual Indonesian and English. 
+          Focus on the goal: ${learningGoal}.
           
           TOOLS:
           - updateAppCode: Use this to update the Learning Dashboard with visual content.
-          - logLearnedItem: Use this whenever you teach a new vocabulary word or grammar rule. This helps track the user's progress.
+          - logLearnedItem: Use this whenever you teach a new vocabulary word or grammar rule.
           
           You have a 'Learning Dashboard' (the iframe) where you can display helpful information.
-          - When you teach a new word, update the dashboard to show the word, its definition, and example sentences.
-          - When you explain a grammar rule, update the dashboard with a clear summary.
-          - You can also create interactive quizzes or reading passages on the dashboard.
-          
-          INTERACTIVE QUIZZES:
-          - When creating a quiz (multiple choice, fill-in-the-blanks, etc.), use vanilla JavaScript to make it interactive.
-          - Provide immediate visual feedback (e.g., green for correct, red for incorrect) when the user interacts with the quiz.
-          - You can include a 'Check Answer' button or make it reactive to selection.
-          - Ensure the quiz is visually clean and uses Tailwind CSS for styling.
-          - Quizzes should be based on the vocabulary or grammar you just discussed with the user.
-
-          INTERACTIVE STORYTELLING:
-          - You can start a story and allow the user to make choices that influence the plot.
-          - Use the Learning Dashboard to visualize the story: show the current scene text, a list of choices, and key vocabulary used in the story.
-          - Encourage the user to describe what happens next in their own words to practice creative expression and English comprehension.
-          - Use visual aids like icons (from Lucide or simple SVG) or stylized CSS to make the story immersive.
-
-          STRUCTURED SPEAKING EXERCISES:
-          - ROLE-PLAY: 
-            - Initiation: "Let's practice a role-play. Today, we're at a [Scenario]."
-            - Dashboard: Show a split screen. Left side: Scenario description and User's Role. Right side: Useful vocabulary and phrases for this scenario.
-            - Interaction: Act as the other character. Keep your turns concise.
-          - IMAGE DESCRIPTION: 
-            - Initiation: "I've put an image on the dashboard. Can you describe what's happening?"
-            - Dashboard: Show a large, high-quality image (use https://picsum.photos/seed/{keyword}/800/600). Below the image, list 3-5 'Target Words' the user should try to use.
-          - TEXT SUMMARY: 
-            - Initiation: "Here's a short article about [Topic]. Read it and then tell me the main points."
-            - Dashboard: Show a clear, well-formatted text snippet (2-3 paragraphs). Highlight 2-3 key sentences or difficult words.
-          - FEEDBACK: After each exercise, provide targeted feedback on the user's fluency, vocabulary usage, and grammar. Be specific and encouraging.
           
           CRITICAL:
           - Do NOT repeat yourself.
-          - Do NOT call the updateAppCode tool if the content is already correct.
           - Briefly explain what you are showing on the dashboard before calling the tool. 
-          - Do NOT speak again after the tool call completes. Wait for the user to respond.
-          - If the user interrupts you, stop immediately.
-          
-          The dashboard starts with a welcome screen.
-          
-          ${currentAppCode ? `The CURRENT STATE of the Learning Dashboard is: \n\n${currentAppCode}\n\n` : 'The dashboard is currently in its initial welcome state.'}
-          
-          Technical Requirements:
-          - Use the updateAppCode tool to refresh the Learning Dashboard.
-          - Use the logLearnedItem tool to record progress.
-          - Generate complete, self-contained HTML documents using Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>.
-          - Use vanilla JavaScript for any interactivity in the dashboard.
-          - Be encouraging, patient, and professional.`,
+          - If the user interrupts you, stop immediately.`,
           tools: [{
             functionDeclarations: [
               {
                 name: "updateAppCode",
-                description: "Updates the Learning Dashboard UI with educational content (vocabulary, grammar, exercises, etc.). Provide a complete HTML document. Ensure the body is scrollable for long content.",
+                description: "Updates the Learning Dashboard UI with educational content.",
                 parameters: {
                   type: Type.OBJECT,
                   properties: {
@@ -198,12 +140,12 @@ export function useLiveAPI(
               },
               {
                 name: "logLearnedItem",
-                description: "Log a new vocabulary word or grammar point that the user has learned.",
+                description: "Log a new vocabulary word or grammar point.",
                 parameters: {
                   type: Type.OBJECT,
                   properties: {
-                    type: { type: Type.STRING, enum: ['vocabulary', 'grammar'], description: "The type of item learned." },
-                    content: { type: Type.STRING, description: "The word or rule learned (e.g., 'ubiquitous' or 'Present Perfect')." }
+                    type: { type: Type.STRING, enum: ['vocabulary', 'grammar', 'pronunciation'], description: "The type of item learned." },
+                    content: { type: Type.STRING, description: "The word or rule learned." }
                   },
                   required: ["type", "content"]
                 }
@@ -214,13 +156,8 @@ export function useLiveAPI(
         callbacks: {
           onopen: async () => {
             try {
-              // Double check if we are still the active session
               if (sessionPromiseRef.current !== sessionPromise) return;
 
-              if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error("Microphone API not available.");
-              }
-              
               const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                   echoCancellation: true,
@@ -240,8 +177,6 @@ export function useLiveAPI(
               
               processor.onaudioprocess = (e) => {
                 const channelData = e.inputBuffer.getChannelData(0);
-                
-                // Calculate audio level
                 let sum = 0;
                 for (let i = 0; i < channelData.length; i++) {
                   sum += channelData[i] * channelData[i];
@@ -267,7 +202,6 @@ export function useLiveAPI(
                   });
                 }
 
-                // Clear output buffer to prevent local echo
                 const outData = e.outputBuffer.getChannelData(0);
                 for (let i = 0; i < outData.length; i++) {
                   outData[i] = 0;
@@ -281,29 +215,26 @@ export function useLiveAPI(
               setIsConnecting(false);
             } catch (err: any) {
               console.error("Error accessing microphone:", err);
-              setError(err.message || "Microphone access denied or failed.");
+              setError(err.message || "Microphone access denied.");
               setIsConnecting(false);
               sessionPromise.then(session => session.close());
             }
           },
           onmessage: async (message: any) => {
-            // Only process if we are still connected
             if (!sessionRef.current) return;
 
-            // Handle Transcript
             const modelTurn = message.serverContent?.modelTurn;
             const userTurn = message.serverContent?.userTurn;
 
             if (modelTurn?.parts) {
-              const text = modelTurn.parts.map((p: any) => p.text).filter((t: any) => t !== undefined).join("");
+              const text = modelTurn.parts.map((p: any) => p.text).filter(Boolean).join("");
               if (text) {
                 setTranscript(prev => {
                   const last = prev[prev.length - 1];
                   if (last && last.role === 'model') {
-                    const newText = last.text + text;
-                    // Prevent duplicate appends if the API sends partials
-                    if (last.text.endsWith(text)) return prev;
-                    return [...prev.slice(0, -1), { ...last, text: newText }];
+                    const newTranscript = [...prev];
+                    newTranscript[newTranscript.length - 1] = { ...last, text: last.text + text };
+                    return newTranscript;
                   }
                   return [...prev, { role: 'model', text }];
                 });
@@ -311,14 +242,14 @@ export function useLiveAPI(
             }
 
             if (userTurn?.parts) {
-              const text = userTurn.parts.map((p: any) => p.text).filter((t: any) => t !== undefined).join("");
+              const text = userTurn.parts.map((p: any) => p.text).filter(Boolean).join("");
               if (text) {
                 setTranscript(prev => {
                   const last = prev[prev.length - 1];
                   if (last && last.role === 'user') {
-                    const newText = last.text + text;
-                    if (last.text.endsWith(text)) return prev;
-                    return [...prev.slice(0, -1), { ...last, text: newText }];
+                    const newTranscript = [...prev];
+                    newTranscript[newTranscript.length - 1] = { ...last, text: last.text + text };
+                    return newTranscript;
                   }
                   return [...prev, { role: 'user', text }];
                 });
@@ -343,7 +274,11 @@ export function useLiveAPI(
                 }
                 const source = playbackContextRef.current.createBufferSource();
                 source.buffer = audioBuffer;
-                source.connect(playbackContextRef.current.destination);
+                if (gainNodeRef.current) {
+                  source.connect(gainNodeRef.current);
+                } else {
+                  source.connect(playbackContextRef.current.destination);
+                }
                 
                 const startTime = Math.max(playbackContextRef.current.currentTime, nextPlayTimeRef.current);
                 source.start(startTime);
@@ -382,10 +317,10 @@ export function useLiveAPI(
                     if (callId) responseObj.id = callId;
                     functionResponses.push(responseObj);
                   } else if (call.name === 'logLearnedItem') {
-                    const type = call.args?.type as 'vocabulary' | 'grammar';
+                    const type = call.args?.type as 'vocabulary' | 'grammar' | 'pronunciation';
                     const content = call.args?.content as string;
                     if (type && content) {
-                      setLearnedItems(prev => [...prev, { type, content, timestamp: Date.now() }]);
+                      setLearnedItems(prev => [...prev, { type, content }]);
                     }
                     const responseObj: any = {
                       name: call.name || "logLearnedItem",
@@ -419,8 +354,7 @@ export function useLiveAPI(
           },
           onerror: (err: any) => {
             console.error("Live API Error:", err);
-            const errorMessage = err?.message || err?.toString() || "Connection error. Check console.";
-            setError(`Connection failed: ${errorMessage}`);
+            setError(`Connection failed: ${err?.message || "Check console."}`);
             setIsConnected(false);
             setIsConnecting(false);
             cleanup();
