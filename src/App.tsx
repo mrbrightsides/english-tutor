@@ -89,7 +89,6 @@ export default function App() {
   const [view, setView] = useState<'tutor' | 'history'>('tutor');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'history'>('dashboard');
   const [learningGoal, setLearningGoal] = useState<string>("General English");
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
@@ -118,7 +117,6 @@ export default function App() {
     setAppCode, 
     appCode, 
     learningGoal, 
-    playbackSpeed,
     sessions.length,
     sessions.flatMap(s => s.learnedItems.map(li => li.content))
   );
@@ -175,7 +173,6 @@ export default function App() {
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = playbackSpeed;
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -550,21 +547,6 @@ export default function App() {
 
       {/* Top Right Controls */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
-        <div className="flex items-center bg-white/90 backdrop-blur-md border border-zinc-200 rounded-full px-3 py-1 shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mr-2">Speed</span>
-          <div className="flex gap-1">
-            {[0.8, 1.0, 1.2, 1.5].map(speed => (
-              <button
-                key={speed}
-                onClick={() => setPlaybackSpeed(speed)}
-                className={`w-8 h-7 rounded-full text-[10px] font-bold transition-all ${playbackSpeed === speed ? 'bg-blue-500 text-white' : 'text-zinc-500 hover:bg-zinc-100'}`}
-              >
-                {speed}x
-              </button>
-            ))}
-          </div>
-        </div>
-
         <motion.button
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}

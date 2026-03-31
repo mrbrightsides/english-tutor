@@ -16,7 +16,6 @@ export function useLiveAPI(
   onAppCodeUpdate: (code: string) => void, 
   currentAppCode: string, 
   learningGoal: string = "General English", 
-  playbackSpeed: number = 1.0,
   sessionsCount: number = 0,
   learnedItemsList: string[] = []
 ) {
@@ -36,11 +35,6 @@ export function useLiveAPI(
   const streamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const respondedToolCallsRef = useRef<Set<string>>(new Set());
-  const playbackSpeedRef = useRef<number>(playbackSpeed);
-
-  useEffect(() => {
-    playbackSpeedRef.current = playbackSpeed;
-  }, [playbackSpeed]);
 
   const cleanup = useCallback(() => {
     if (processorRef.current) {
@@ -92,7 +86,7 @@ export function useLiveAPI(
     setTranscript([]);
     respondedToolCallsRef.current.clear();
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
       nextPlayTimeRef.current = playbackContextRef.current.currentTime;
@@ -349,12 +343,11 @@ export function useLiveAPI(
                 }
                 const source = playbackContextRef.current.createBufferSource();
                 source.buffer = audioBuffer;
-                source.playbackRate.value = playbackSpeedRef.current;
                 source.connect(playbackContextRef.current.destination);
                 
                 const startTime = Math.max(playbackContextRef.current.currentTime, nextPlayTimeRef.current);
                 source.start(startTime);
-                nextPlayTimeRef.current = startTime + (audioBuffer.duration / playbackSpeedRef.current);
+                nextPlayTimeRef.current = startTime + audioBuffer.duration;
               }
             }
             
