@@ -121,7 +121,7 @@ export function useLiveAPI(
           CRITICAL:
           - Do NOT repeat yourself.
           - Briefly explain what you are showing on the dashboard before calling the tool. 
-          - If the user interrupts you, stop immediately.`,
+          - You can be interrupted by the user. If the user starts speaking, stop immediately and listen.`,
           tools: [{
             functionDeclarations: [
               {
@@ -289,6 +289,9 @@ export function useLiveAPI(
             if (message.serverContent?.interrupted && playbackContextRef.current) {
               playbackContextRef.current.close();
               playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+              gainNodeRef.current = playbackContextRef.current.createGain();
+              gainNodeRef.current.gain.value = 1.8;
+              gainNodeRef.current.connect(playbackContextRef.current.destination);
               nextPlayTimeRef.current = playbackContextRef.current.currentTime;
             }
             
