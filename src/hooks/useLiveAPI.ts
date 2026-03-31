@@ -1,11 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration, ThinkingLevel } from '@google/genai';
 
-export interface TranscriptEntry {
-  role: 'user' | 'model';
-  text: string;
-}
-
 export interface LearnedItem {
   content: string;
   type: 'vocabulary' | 'grammar' | 'pronunciation';
@@ -23,8 +18,9 @@ export function useLiveAPI(
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [sessionSummary, setSessionSummary] = useState<string>("");
   const [learnedItems, setLearnedItems] = useState<LearnedItem[]>([]);
+  const [transcript, setTranscript] = useState<{ role: 'user' | 'model', text: string, isFinal?: boolean }[]>([]);
   
   const sessionRef = useRef<any>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
@@ -81,6 +77,7 @@ export function useLiveAPI(
     
     setIsConnecting(true);
     setError(null);
+    setSessionSummary("");
     setTranscript([]);
     respondedToolCallsRef.current.clear();
     try {
@@ -98,11 +95,11 @@ export function useLiveAPI(
         config: {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseModalities: [Modality.AUDIO],
-          outputAudioTranscription: {},
-          inputAudioTranscription: {},
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } },
           },
+          outputAudioTranscription: {},
+          inputAudioTranscription: {},
           systemInstruction: `You are 'Ngenglish', a friendly and personal AI English learning assistant. Your goal is to help the user improve their English skills through conversation.
           
           USER'S CURRENT LEARNING GOAL: ${learningGoal}
@@ -115,13 +112,15 @@ export function useLiveAPI(
           TOOLS:
           - updateAppCode: Use this to update the Learning Dashboard with visual content.
           - logLearnedItem: Use this whenever you teach a new vocabulary word or grammar rule.
+          - updateSessionSummary: Use this periodically to maintain a live summary of the conversation.
           
           You have a 'Learning Dashboard' (the iframe) where you can display helpful information.
           
           CRITICAL:
           - Do NOT repeat yourself.
           - Briefly explain what you are showing on the dashboard before calling the tool. 
-          - You can be interrupted by the user. If the user starts speaking, stop immediately and listen.`,
+          - You can be interrupted by the user. If the user starts speaking, stop immediately and listen.
+          - Maintain a live summary of the session using 'updateSessionSummary'. Include key topics discussed and progress made.`,
           tools: [{
             functionDeclarations: [
               {
@@ -149,6 +148,20 @@ export function useLiveAPI(
                   },
                   required: ["type", "content"]
                 }
+              },
+              {
+                name: "updateSessionSummary",
+                description: "Updates the live session summary with key points and progress.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    summary: {
+                      type: Type.STRING,
+                      description: "The updated session summary in Markdown format.",
+                    },
+                  },
+                  required: ["summary"],
+                },
               }
             ]
           }]
@@ -223,39 +236,7 @@ export function useLiveAPI(
           onmessage: async (message: any) => {
             if (!sessionRef.current) return;
 
-            const modelTurn = message.serverContent?.modelTurn;
-            const userTurn = message.serverContent?.userTurn;
-
-            if (modelTurn?.parts) {
-              const text = modelTurn.parts.map((p: any) => p.text).filter(Boolean).join("");
-              if (text) {
-                setTranscript(prev => {
-                  const last = prev[prev.length - 1];
-                  if (last && last.role === 'model') {
-                    const newTranscript = [...prev];
-                    newTranscript[newTranscript.length - 1] = { ...last, text: last.text + text };
-                    return newTranscript;
-                  }
-                  return [...prev, { role: 'model', text }];
-                });
-              }
-            }
-
-            if (userTurn?.parts) {
-              const text = userTurn.parts.map((p: any) => p.text).filter(Boolean).join("");
-              if (text) {
-                setTranscript(prev => {
-                  const last = prev[prev.length - 1];
-                  if (last && last.role === 'user') {
-                    const newTranscript = [...prev];
-                    newTranscript[newTranscript.length - 1] = { ...last, text: last.text + text };
-                    return newTranscript;
-                  }
-                  return [...prev, { role: 'user', text }];
-                });
-              }
-            }
-
+            // Handle Audio
             const parts = message.serverContent?.modelTurn?.parts || [];
             for (const part of parts) {
               const base64Audio = part.inlineData?.data;
@@ -286,6 +267,7 @@ export function useLiveAPI(
               }
             }
             
+            // Handle Interruption
             if (message.serverContent?.interrupted && playbackContextRef.current) {
               playbackContextRef.current.close();
               playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
@@ -294,7 +276,39 @@ export function useLiveAPI(
               gainNodeRef.current.connect(playbackContextRef.current.destination);
               nextPlayTimeRef.current = playbackContextRef.current.currentTime;
             }
+
+            // Handle Transcription
+            if (message.serverContent?.inputAudioTranscription) {
+              const { text, isFinal } = message.serverContent.inputAudioTranscription;
+              if (text) {
+                setTranscript(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last && last.role === 'user' && !last.isFinal) {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: 'user', text, isFinal };
+                    return updated;
+                  }
+                  return [...prev, { role: 'user', text, isFinal }];
+                });
+              }
+            }
+
+            if (message.serverContent?.modelTurn?.parts) {
+              const textParts = message.serverContent.modelTurn.parts.filter((p: any) => p.text).map((p: any) => p.text).join("");
+              if (textParts) {
+                setTranscript(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last && last.role === 'model') {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: 'model', text: last.text + textParts };
+                    return updated;
+                  }
+                  return [...prev, { role: 'model', text: textParts }];
+                });
+              }
+            }
             
+            // Handle Tool Calls
             if (message.toolCall) {
               const functionCalls = message.toolCall.functionCalls;
               if (functionCalls && functionCalls.length > 0) {
@@ -327,6 +341,17 @@ export function useLiveAPI(
                     }
                     const responseObj: any = {
                       name: call.name || "logLearnedItem",
+                      response: { output: { result: "success" } }
+                    };
+                    if (callId) responseObj.id = callId;
+                    functionResponses.push(responseObj);
+                  } else if (call.name === 'updateSessionSummary') {
+                    const summary = call.args?.summary as string;
+                    if (summary) {
+                      setSessionSummary(summary);
+                    }
+                    const responseObj: any = {
+                      name: call.name || "updateSessionSummary",
                       response: { output: { result: "success" } }
                     };
                     if (callId) responseObj.id = callId;
@@ -373,7 +398,7 @@ export function useLiveAPI(
       setError(err.message || "Failed to connect");
       setIsConnecting(false);
     }
-  }, [onAppCodeUpdate, currentAppCode, cleanup]);
+  }, [onAppCodeUpdate, currentAppCode, cleanup, learningGoal, sessionsCount, learnedItemsList]);
 
   const disconnect = useCallback(() => {
     cleanup();
@@ -393,5 +418,5 @@ export function useLiveAPI(
     return cleanup;
   }, [cleanup]);
 
-  return { isConnected, isConnecting, error, audioLevel, isModelSpeaking, transcript, learnedItems, connect, disconnect, setTranscript, setLearnedItems };
+  return { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, transcript, connect, disconnect, setSessionSummary, setLearnedItems };
 }

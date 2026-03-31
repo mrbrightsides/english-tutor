@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sun, Moon, History, BookOpen, Trash2, X, ArrowDown, Target } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sun, Moon, History, BookOpen, Trash2, X, ArrowDown, Target, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useLiveAPI, TranscriptEntry, LearnedItem } from './hooks/useLiveAPI';
+import ReactMarkdown from 'react-markdown';
+import { useLiveAPI, LearnedItem } from './hooks/useLiveAPI';
 
 const LEARNING_GOALS = [
   "General English",
@@ -15,8 +16,9 @@ const LEARNING_GOALS = [
 interface Session {
   id: string;
   date: string;
-  transcript: TranscriptEntry[];
+  summary: string;
   learnedItems: LearnedItem[];
+  transcript: { role: 'user' | 'model', text: string }[];
 }
 
 const INITIAL_APP_CODE = `<!DOCTYPE html>
@@ -113,7 +115,7 @@ export default function App() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, transcript, learnedItems, connect, disconnect, setTranscript, setLearnedItems } = useLiveAPI(
+  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, transcript, connect, disconnect, setSessionSummary, setLearnedItems } = useLiveAPI(
     setAppCode, 
     appCode, 
     learningGoal, 
@@ -123,12 +125,13 @@ export default function App() {
 
   // Save session when disconnected and has content
   useEffect(() => {
-    if (!isConnected && (transcript.length > 0 || learnedItems.length > 0)) {
+    if (!isConnected && (sessionSummary.length > 0 || learnedItems.length > 0 || transcript.length > 0)) {
       const newSession: Session = {
         id: Date.now().toString(),
         date: new Date().toLocaleString(),
-        transcript: [...transcript],
-        learnedItems: [...learnedItems]
+        summary: sessionSummary || (transcript.length > 0 ? "No summary generated, but conversation was recorded." : ""),
+        learnedItems: [...learnedItems],
+        transcript: transcript.map(t => ({ role: t.role, text: t.text }))
       };
       
       setSessions(prev => {
@@ -138,19 +141,19 @@ export default function App() {
       });
       
       // Clear current session data for next time
-      setTranscript([]);
+      setSessionSummary("");
       setLearnedItems([]);
-      localStorage.removeItem('ngenglish_current_transcript');
+      localStorage.removeItem('ngenglish_current_summary');
       localStorage.removeItem('ngenglish_current_learned');
     }
   }, [isConnected]);
 
   // Auto-save current session to a temporary storage to prevent data loss
   useEffect(() => {
-    if (isConnected && transcript.length > 0) {
-      localStorage.setItem('ngenglish_current_transcript', JSON.stringify(transcript));
+    if (isConnected && sessionSummary.length > 0) {
+      localStorage.setItem('ngenglish_current_summary', sessionSummary);
     }
-  }, [transcript, isConnected]);
+  }, [sessionSummary, isConnected]);
 
   useEffect(() => {
     if (isConnected && learnedItems.length > 0) {
@@ -160,13 +163,10 @@ export default function App() {
 
   // Recover interrupted session
   useEffect(() => {
-    const tempTranscript = localStorage.getItem('ngenglish_current_transcript');
+    const tempSummary = localStorage.getItem('ngenglish_current_summary');
     const tempLearned = localStorage.getItem('ngenglish_current_learned');
-    if (tempTranscript && !isConnected) {
-      try {
-        const parsed = JSON.parse(tempTranscript);
-        if (parsed.length > 0) setTranscript(parsed);
-      } catch (e) {}
+    if (tempSummary && !isConnected) {
+      setSessionSummary(tempSummary);
     }
     if (tempLearned && !isConnected) {
       try {
@@ -180,7 +180,7 @@ export default function App() {
     if (transcriptEndRef.current && !showScrollButton) {
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [transcript, showScrollButton]);
+  }, [transcript, sessionSummary, showScrollButton]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -209,18 +209,6 @@ export default function App() {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
       window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  const scrollToTranscriptItem = (text: string) => {
-    const elements = document.querySelectorAll('.transcript-item');
-    for (const el of elements) {
-      if (el.textContent?.toLowerCase().includes(text.toLowerCase())) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
-        setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2'), 2000);
-        break;
-      }
     }
   };
 
@@ -268,7 +256,7 @@ export default function App() {
                     }}
                     className={`text-xs font-bold uppercase tracking-wider transition-colors ${(isMobile ? activeTab === 'chat' : view === 'tutor') ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
                   >
-                    Transcript
+                    Summary
                   </button>
                   <button 
                     onClick={() => {
@@ -306,46 +294,83 @@ export default function App() {
                 className="flex-1 overflow-y-auto custom-scrollbar relative pb-24 md:pb-4"
               >
                 {(isMobile ? activeTab === 'chat' : view === 'tutor') ? (
-                  <div className="space-y-4 pr-2 pb-4">
-                    {transcript.length === 0 ? (
-                      <div className={`text-xs italic ${isLightMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                        Start speaking to see the transcript...
-                      </div>
-                    ) : (
-                      transcript.map((entry, i) => (
-                        <div key={i} className={`transcript-item flex flex-col gap-1 transition-all duration-500 ${entry.role === 'user' ? 'items-end' : 'items-start'}`}>
-                          <div className="flex items-center gap-2">
-                            {entry.role === 'model' && (
-                              <button 
-                                onClick={() => speakText(entry.text)}
-                                className={`p-1 rounded-full hover:bg-zinc-200 transition-colors ${isLightMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-                                title="Read aloud"
-                              >
-                                <RotateCcw className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                            <span className={`text-[10px] font-bold uppercase tracking-tighter ${entry.role === 'user' ? 'text-blue-500' : 'text-zinc-500'}`}>
-                              {entry.role === 'user' ? 'You' : 'Ngenglish'}
-                            </span>
-                            {i === transcript.length - 1 && isConnected && (
-                              <motion.div 
-                                animate={{ opacity: [0.4, 1, 0.4] }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                                className="w-1 h-1 rounded-full bg-blue-500"
-                              />
-                            )}
-                          </div>
-                          <div className={`px-3 py-2 rounded-2xl text-xs leading-relaxed max-w-[90%] ${
-                            entry.role === 'user' 
-                              ? (isLightMode ? 'bg-blue-50 text-blue-900 border border-blue-100' : 'bg-blue-900/30 text-blue-100 border border-blue-800/50')
-                              : (isLightMode ? 'bg-zinc-100 text-zinc-900 border border-zinc-200' : 'bg-zinc-800/50 text-zinc-100 border border-zinc-700/50')
-                          }`}>
-                            {entry.text}
-                          </div>
+                  <div className="space-y-6 pr-2 pb-4">
+                    {/* Summary Section */}
+                    {sessionSummary.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                          <FileText className="w-4 h-4 text-blue-500" />
+                          <h3 className={`text-[10px] font-bold uppercase tracking-widest ${isLightMode ? 'text-zinc-500' : 'text-zinc-400'}`}>Session Summary</h3>
                         </div>
-                      ))
+                        <div className={`prose prose-sm max-w-none ${isLightMode ? 'prose-zinc' : 'prose-invert'} p-4 rounded-3xl border ${isLightMode ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/50 border-zinc-800'}`}>
+                          <ReactMarkdown>{sessionSummary}</ReactMarkdown>
+                        </div>
+                      </div>
                     )}
-                    <div ref={transcriptEndRef} />
+
+                    {/* Transcript Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 px-1">
+                        <Mic className="w-4 h-4 text-emerald-500" />
+                        <h3 className={`text-[10px] font-bold uppercase tracking-widest ${isLightMode ? 'text-zinc-500' : 'text-zinc-400'}`}>Live Transcript</h3>
+                      </div>
+                      
+                      {transcript.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center opacity-50">
+                          <p className={`text-xs font-medium ${isLightMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                            Conversation will appear here...
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {transcript.map((msg, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                            >
+                              <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
+                                msg.role === 'user'
+                                  ? (isLightMode ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-blue-500 text-white rounded-tr-none')
+                                  : (isLightMode ? 'bg-zinc-200 text-zinc-800 rounded-tl-none' : 'bg-zinc-800 text-zinc-200 rounded-tl-none')
+                              } ${!msg.isFinal && msg.role === 'user' ? 'opacity-70 italic' : ''}`}>
+                                {msg.text}
+                              </div>
+                            </motion.div>
+                          ))}
+                          <div ref={transcriptEndRef} />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {learnedItems.length > 0 && (
+                      <div className="mt-6 space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                          <BookOpen className="w-4 h-4 text-purple-500" />
+                          <h3 className={`text-[10px] font-bold uppercase tracking-widest ${isLightMode ? 'text-zinc-500' : 'text-zinc-400'}`}>Learned Today</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {learnedItems.map((item, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className={`px-3 py-1.5 rounded-2xl text-[11px] font-medium border flex items-center gap-2 ${
+                                item.type === 'vocabulary' 
+                                  ? (isLightMode ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-blue-900/20 text-blue-300 border-blue-800/30')
+                                  : item.type === 'grammar'
+                                  ? (isLightMode ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-purple-900/20 text-purple-300 border-purple-800/30')
+                                  : (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-emerald-900/20 text-emerald-300 border-emerald-800/30')
+                              }`}
+                            >
+                              <span className="opacity-50">•</span>
+                              {item.content}
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-6 pr-2 pb-4">
@@ -384,46 +409,42 @@ export default function App() {
                               </div>
                               <div className="flex flex-wrap gap-1">
                                 {session.learnedItems.map((item, idx) => (
-                                  <button 
+                                  <div 
                                     key={idx} 
-                                    onClick={() => {
-                                      if (expandedSessionId !== session.id) setExpandedSessionId(session.id);
-                                      setTimeout(() => scrollToTranscriptItem(item.content), 100);
-                                    }}
-                                    className={`px-2 py-0.5 rounded-full text-[9px] font-medium transition-all hover:scale-105 active:scale-95 ${isLightMode ? 'bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100' : 'bg-blue-900/20 text-blue-300 border border-blue-800/30 hover:bg-blue-900/40'}`}
+                                    className={`px-2 py-0.5 rounded-full text-[9px] font-medium ${isLightMode ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-blue-900/20 text-blue-300 border-blue-800/30'}`}
                                   >
                                     {item.content}
-                                  </button>
+                                  </div>
                                 ))}
                               </div>
                             </div>
                           )}
                           
-                          <div className={`space-y-2 ${expandedSessionId === session.id ? '' : 'opacity-60'}`}>
-                            {(expandedSessionId === session.id ? session.transcript : session.transcript.slice(0, 2)).map((entry, idx) => (
-                              <div key={idx} className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[9px] font-bold uppercase tracking-tighter ${entry.role === 'user' ? 'text-blue-500' : 'text-zinc-500'}`}>
-                                    {entry.role === 'user' ? 'You' : 'Ngenglish'}
-                                  </span>
-                                  {expandedSessionId === session.id && entry.role === 'model' && (
-                                    <button 
-                                      onClick={() => speakText(entry.text)}
-                                      className="p-0.5 rounded-full hover:bg-zinc-200 text-zinc-400"
-                                    >
-                                      <RotateCcw className="w-2 h-2" />
-                                    </button>
-                                  )}
-                                </div>
-                                <p className={`transcript-item text-[10px] leading-relaxed ${expandedSessionId === session.id ? '' : 'line-clamp-1'} ${isLightMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                                  {entry.text}
-                                </p>
-                              </div>
-                            ))}
-                            {expandedSessionId !== session.id && session.transcript.length > 2 && (
-                              <p className="text-[9px] italic text-zinc-500">+{session.transcript.length - 2} more messages</p>
-                            )}
+                          <div className={`prose prose-xs max-w-none ${isLightMode ? 'prose-zinc' : 'prose-invert'} ${expandedSessionId === session.id ? '' : 'line-clamp-3 opacity-60'}`}>
+                            <ReactMarkdown>{session.summary}</ReactMarkdown>
                           </div>
+
+                          {expandedSessionId === session.id && session.transcript && session.transcript.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-zinc-100 space-y-2">
+                              <div className="flex items-center gap-1 mb-2">
+                                <Mic className="w-3 h-3 text-emerald-500" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500">Full Transcript</span>
+                              </div>
+                              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                {session.transcript.map((msg, idx) => (
+                                  <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                    <div className={`max-w-[90%] px-3 py-1.5 rounded-xl text-[11px] ${
+                                      msg.role === 'user'
+                                        ? (isLightMode ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-blue-900/20 text-blue-300 border border-blue-800/30')
+                                        : (isLightMode ? 'bg-zinc-100 text-zinc-700' : 'bg-zinc-800 text-zinc-300')
+                                    }`}>
+                                      {msg.text}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -438,13 +459,14 @@ export default function App() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       onClick={scrollToBottom}
-                      className={`absolute bottom-24 md:bottom-4 right-6 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all ${isLightMode ? 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'}`}
+                      className={`absolute bottom-24 md:bottom-4 right-6 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all z-20 ${isLightMode ? 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'}`}
                     >
                       <ArrowDown className="w-4 h-4" />
                     </motion.button>
                   )}
                 </AnimatePresence>
               </div>
+              
               {!isMobile && (
                 <div className="mt-6 shrink-0 text-center">
                   <p className={`text-[10px] ${isLightMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
