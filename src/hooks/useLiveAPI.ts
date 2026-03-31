@@ -86,7 +86,7 @@ export function useLiveAPI(
     setTranscript([]);
     respondedToolCallsRef.current.clear();
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
       nextPlayTimeRef.current = playbackContextRef.current.currentTime;
