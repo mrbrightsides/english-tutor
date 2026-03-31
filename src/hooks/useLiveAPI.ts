@@ -20,7 +20,6 @@ export function useLiveAPI(
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<string>("");
   const [learnedItems, setLearnedItems] = useState<LearnedItem[]>([]);
-  const [transcript, setTranscript] = useState<{ role: 'user' | 'model', text: string, isFinal?: boolean }[]>([]);
   
   const sessionRef = useRef<any>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
@@ -78,7 +77,6 @@ export function useLiveAPI(
     setIsConnecting(true);
     setError(null);
     setSessionSummary("");
-    setTranscript([]);
     respondedToolCallsRef.current.clear();
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
@@ -277,37 +275,6 @@ export function useLiveAPI(
               nextPlayTimeRef.current = playbackContextRef.current.currentTime;
             }
 
-            // Handle Transcription
-            if (message.serverContent?.inputAudioTranscription) {
-              const { text, isFinal } = message.serverContent.inputAudioTranscription;
-              if (text) {
-                setTranscript(prev => {
-                  const last = prev[prev.length - 1];
-                  if (last && last.role === 'user' && !last.isFinal) {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role: 'user', text, isFinal };
-                    return updated;
-                  }
-                  return [...prev, { role: 'user', text, isFinal }];
-                });
-              }
-            }
-
-            if (message.serverContent?.modelTurn?.parts) {
-              const textParts = message.serverContent.modelTurn.parts.filter((p: any) => p.text).map((p: any) => p.text).join("");
-              if (textParts) {
-                setTranscript(prev => {
-                  const last = prev[prev.length - 1];
-                  if (last && last.role === 'model') {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role: 'model', text: last.text + textParts };
-                    return updated;
-                  }
-                  return [...prev, { role: 'model', text: textParts }];
-                });
-              }
-            }
-            
             // Handle Tool Calls
             if (message.toolCall) {
               const functionCalls = message.toolCall.functionCalls;
@@ -418,5 +385,5 @@ export function useLiveAPI(
     return cleanup;
   }, [cleanup]);
 
-  return { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, transcript, connect, disconnect, setSessionSummary, setLearnedItems };
+  return { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, connect, disconnect, setSessionSummary, setLearnedItems };
 }

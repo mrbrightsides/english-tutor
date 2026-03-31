@@ -18,7 +18,6 @@ interface Session {
   date: string;
   summary: string;
   learnedItems: LearnedItem[];
-  transcript: { role: 'user' | 'model', text: string }[];
 }
 
 const INITIAL_APP_CODE = `<!DOCTYPE html>
@@ -115,7 +114,7 @@ export default function App() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, transcript, connect, disconnect, setSessionSummary, setLearnedItems } = useLiveAPI(
+  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, connect, disconnect, setSessionSummary, setLearnedItems } = useLiveAPI(
     setAppCode, 
     appCode, 
     learningGoal, 
@@ -125,13 +124,12 @@ export default function App() {
 
   // Save session when disconnected and has content
   useEffect(() => {
-    if (!isConnected && (sessionSummary.length > 0 || learnedItems.length > 0 || transcript.length > 0)) {
+    if (!isConnected && (sessionSummary.length > 0 || learnedItems.length > 0)) {
       const newSession: Session = {
         id: Date.now().toString(),
         date: new Date().toLocaleString(),
-        summary: sessionSummary || (transcript.length > 0 ? "No summary generated, but conversation was recorded." : ""),
-        learnedItems: [...learnedItems],
-        transcript: transcript.map(t => ({ role: t.role, text: t.text }))
+        summary: sessionSummary || "No summary generated for this session.",
+        learnedItems: [...learnedItems]
       };
       
       setSessions(prev => {
@@ -180,7 +178,7 @@ export default function App() {
     if (transcriptEndRef.current && !showScrollButton) {
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [transcript, sessionSummary, showScrollButton]);
+  }, [sessionSummary, showScrollButton]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -295,8 +293,16 @@ export default function App() {
               >
                 {(isMobile ? activeTab === 'chat' : view === 'tutor') ? (
                   <div className="space-y-6 pr-2 pb-4">
-                    {/* Summary Section */}
-                    {sessionSummary.length > 0 && (
+                    {sessionSummary.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${isLightMode ? 'bg-zinc-100 text-zinc-400' : 'bg-zinc-900 text-zinc-600'}`}>
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <p className={`text-xs font-medium ${isLightMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                          Ngenglish will summarize your session here...
+                        </p>
+                      </div>
+                    ) : (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
                           <FileText className="w-4 h-4 text-blue-500" />
@@ -307,42 +313,6 @@ export default function App() {
                         </div>
                       </div>
                     )}
-
-                    {/* Transcript Section */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 px-1">
-                        <Mic className="w-4 h-4 text-emerald-500" />
-                        <h3 className={`text-[10px] font-bold uppercase tracking-widest ${isLightMode ? 'text-zinc-500' : 'text-zinc-400'}`}>Live Transcript</h3>
-                      </div>
-                      
-                      {transcript.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center opacity-50">
-                          <p className={`text-xs font-medium ${isLightMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                            Conversation will appear here...
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {transcript.map((msg, i) => (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-                            >
-                              <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
-                                msg.role === 'user'
-                                  ? (isLightMode ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-blue-500 text-white rounded-tr-none')
-                                  : (isLightMode ? 'bg-zinc-200 text-zinc-800 rounded-tl-none' : 'bg-zinc-800 text-zinc-200 rounded-tl-none')
-                              } ${!msg.isFinal && msg.role === 'user' ? 'opacity-70 italic' : ''}`}>
-                                {msg.text}
-                              </div>
-                            </motion.div>
-                          ))}
-                          <div ref={transcriptEndRef} />
-                        </div>
-                      )}
-                    </div>
                     
                     {learnedItems.length > 0 && (
                       <div className="mt-6 space-y-3">
@@ -423,28 +393,6 @@ export default function App() {
                           <div className={`prose prose-xs max-w-none ${isLightMode ? 'prose-zinc' : 'prose-invert'} ${expandedSessionId === session.id ? '' : 'line-clamp-3 opacity-60'}`}>
                             <ReactMarkdown>{session.summary}</ReactMarkdown>
                           </div>
-
-                          {expandedSessionId === session.id && session.transcript && session.transcript.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-zinc-100 space-y-2">
-                              <div className="flex items-center gap-1 mb-2">
-                                <Mic className="w-3 h-3 text-emerald-500" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500">Full Transcript</span>
-                              </div>
-                              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                {session.transcript.map((msg, idx) => (
-                                  <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                    <div className={`max-w-[90%] px-3 py-1.5 rounded-xl text-[11px] ${
-                                      msg.role === 'user'
-                                        ? (isLightMode ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-blue-900/20 text-blue-300 border border-blue-800/30')
-                                        : (isLightMode ? 'bg-zinc-100 text-zinc-700' : 'bg-zinc-800 text-zinc-300')
-                                    }`}>
-                                      {msg.text}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       ))
                     )}
@@ -453,7 +401,7 @@ export default function App() {
                 
                 {/* Scroll to Bottom Button */}
                 <AnimatePresence>
-                  {showScrollButton && (isMobile ? activeTab === 'chat' : view === 'tutor') && transcript.length > 0 && (
+                  {showScrollButton && (isMobile ? activeTab === 'chat' : view === 'tutor') && sessionSummary.length > 0 && (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
