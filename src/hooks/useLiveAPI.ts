@@ -99,12 +99,12 @@ export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCo
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } },
           },
-          systemInstruction: `You are a personal AI English Tutor. Your goal is to help the user improve their English skills through conversation.
+          systemInstruction: `You are 'Ngenglish', a friendly and personal AI English learning assistant. Your goal is to help the user improve their English skills through conversation.
           
           USER'S CURRENT LEARNING GOAL: ${learningGoal}
           Tailor all your conversations, vocabulary choices, and exercises to align with this goal.
 
-          When the user first connects, greet them warmly and mention their current learning goal. 
+          When the user first connects, greet them warmly in a mix of casual Indonesian and English (Jaksel style is fine if appropriate), mention their current learning goal, and introduce yourself as 'Ngenglish'. 
           Offer them a few options to start, such as:
           - A casual conversation.
           - An interactive quiz on a specific topic.

@@ -1,5 +1,5 @@
 {
-  "name": "Remix: English Tutor Live",
+  "name": "Ngenglish",
   "description": "An interactive English learning assistant powered by Gemini Live API. Practice speaking and get real-time feedback.",
   "requestFramePermissions": [
     "microphone"

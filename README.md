@@ -1,16 +1,16 @@
-# English Tutor Live 🎙️📚
+# Ngenglish 🎙️📚
 
-**English Tutor Live** is an interactive, voice-powered English learning assistant built with React and the **Google Gemini 3.1 Flash Live API**. It provides a natural, low-latency speaking environment where you can practice English, receive real-time feedback, and engage with a dynamic learning dashboard.
+**Ngenglish** is an interactive, voice-powered English learning assistant built with React and the **Google Gemini 3.1 Flash Live API**. It provides a natural, low-latency speaking environment where you can practice English with a friendly AI tutor that speaks your language (Indonesian/English mix).
 
 ---
 
 ## 🌟 Key Features
 
 ### 1. Real-time Voice Interaction
-Engage in natural conversations with an AI tutor. Powered by Gemini's Live API, the interaction is fluid, low-latency, and supports interruptions just like a real person.
+Engage in natural conversations with 'Ngenglish'. Powered by Gemini's Live API, the interaction is fluid, low-latency, and supports interruptions just like a real person.
 
 ### 2. Multimodal Learning Dashboard
-The tutor doesn't just talk; it *shows*. The tutor can dynamically update a visual dashboard to provide:
+The tutor doesn't just talk; it *shows*. Ngenglish can dynamically update a visual dashboard to provide:
 - **Vocabulary Cards**: Definitions, examples, and pronunciation tips.
 - **Grammar Summaries**: Clear explanations of rules discussed in the session.
 - **Interactive Quizzes**: Multiple-choice and fill-in-the-blank exercises with instant feedback.

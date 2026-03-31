@@ -35,9 +35,9 @@ const INITIAL_APP_CODE = `<!DOCTYPE html>
     <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
     </div>
-    <h1 class="text-3xl md:text-4xl font-bold text-zinc-900 mb-4 tracking-tight">Welcome to English Tutor Live</h1>
+    <h1 class="text-3xl md:text-4xl font-bold text-zinc-900 mb-4 tracking-tight">Welcome to Ngenglish</h1>
     <p class="text-zinc-500 text-sm md:text-base leading-relaxed mb-10 max-w-lg mx-auto">
-      I'm your personal AI English tutor. Tap the microphone to start. Choose an activity or just start talking!
+      Halo! Aku tutor AI personal kamu buat belajar bahasa Inggris. Klik mic di bawah buat mulai ngobrol. Pilih aktivitasnya atau langsung cuap-cuap aja!
     </p>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
@@ -279,7 +279,7 @@ export default function App() {
                               </button>
                             )}
                             <span className={`text-[10px] font-bold uppercase tracking-tighter ${entry.role === 'user' ? 'text-blue-500' : 'text-zinc-500'}`}>
-                              {entry.role === 'user' ? 'You' : 'Tutor'}
+                              {entry.role === 'user' ? 'You' : 'Ngenglish'}
                             </span>
                           </div>
                           <div className={`px-3 py-2 rounded-2xl text-xs leading-relaxed max-w-[90%] ${
@@ -351,7 +351,7 @@ export default function App() {
                               <div key={idx} className="flex flex-col gap-1">
                                 <div className="flex items-center gap-2">
                                   <span className={`text-[9px] font-bold uppercase tracking-tighter ${entry.role === 'user' ? 'text-blue-500' : 'text-zinc-500'}`}>
-                                    {entry.role === 'user' ? 'You' : 'Tutor'}
+                                    {entry.role === 'user' ? 'You' : 'Ngenglish'}
                                   </span>
                                   {expandedSessionId === session.id && entry.role === 'model' && (
                                     <button 
@@ -394,7 +394,7 @@ export default function App() {
               </div>
               <div className="mt-6 shrink-0 text-center">
                 <p className={`text-[10px] ${isLightMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                  {view === 'tutor' ? 'Your tutor is here to help you learn.' : 'Review your progress and past conversations.'}
+                  {view === 'tutor' ? 'Ngenglish siap bantuin kamu belajar.' : 'Review progress dan percakapan lama kamu.'}
                 </p>
               </div>
             </motion.div>
