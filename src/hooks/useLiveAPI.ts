@@ -12,7 +12,14 @@ export interface LearnedItem {
   timestamp: number;
 }
 
-export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCode: string, learningGoal: string = "General English", playbackSpeed: number = 1.0) {
+export function useLiveAPI(
+  onAppCodeUpdate: (code: string) => void, 
+  currentAppCode: string, 
+  learningGoal: string = "General English", 
+  playbackSpeed: number = 1.0,
+  sessionsCount: number = 0,
+  learnedItemsList: string[] = []
+) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,9 +109,16 @@ export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCo
           systemInstruction: `You are 'Ngenglish', a friendly and personal AI English learning assistant. Your goal is to help the user improve their English skills through conversation.
           
           USER'S CURRENT LEARNING GOAL: ${learningGoal}
+          ${sessionsCount > 0 ? `This is a RETURNING USER. They have completed ${sessionsCount} sessions with you already.` : 'This is a NEW USER.'}
+          ${learnedItemsList.length > 0 ? `Items they have learned so far: ${learnedItemsList.join(', ')}.` : ''}
+
           Tailor all your conversations, vocabulary choices, and exercises to align with this goal.
 
-          When the user first connects, greet them warmly in a mix of casual Indonesian and English (Jaksel style is fine if appropriate), mention their current learning goal, and introduce yourself as 'Ngenglish'. 
+          When the user first connects:
+          - If they are a RETURNING USER, greet them like an old friend/mentor. Mention that it's great to see them again for their ${sessionsCount + 1}th session.
+          - If they are a NEW USER, introduce yourself as 'Ngenglish' and explain how you can help.
+          
+          Greet them in a mix of casual Indonesian and English (Jaksel style is fine if appropriate), and mention their current learning goal. 
           Offer them a few options to start, such as:
           - A casual conversation.
           - An interactive quiz on a specific topic.
@@ -176,7 +190,7 @@ export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCo
             functionDeclarations: [
               {
                 name: "updateAppCode",
-                description: "Updates the Learning Dashboard UI with educational content (vocabulary, grammar, exercises, etc.). Provide a complete HTML document.",
+                description: "Updates the Learning Dashboard UI with educational content (vocabulary, grammar, exercises, etc.). Provide a complete HTML document. Ensure the body is scrollable for long content.",
                 parameters: {
                   type: Type.OBJECT,
                   properties: {
@@ -253,14 +267,11 @@ export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCo
                 }
                 const base64 = btoa(binary);
                 
-                sessionPromise.then(session => {
-                  // Only send if this is still the active session
-                  if (sessionRef.current === session) {
-                    session.sendRealtimeInput({
-                      audio: { data: base64, mimeType: 'audio/pcm;rate=16000' }
-                    });
-                  }
-                });
+                if (sessionRef.current) {
+                  sessionRef.current.sendRealtimeInput({
+                    audio: { data: base64, mimeType: 'audio/pcm;rate=16000' }
+                  });
+                }
 
                 // Clear output buffer to prevent local echo
                 const outData = e.outputBuffer.getChannelData(0);
@@ -290,12 +301,15 @@ export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCo
             const userTurn = message.serverContent?.userTurn;
 
             if (modelTurn?.parts) {
-              const text = modelTurn.parts.map((p: any) => p.text).filter(Boolean).join("");
+              const text = modelTurn.parts.map((p: any) => p.text).filter((t: any) => t !== undefined).join("");
               if (text) {
                 setTranscript(prev => {
                   const last = prev[prev.length - 1];
                   if (last && last.role === 'model') {
-                    return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+                    const newText = last.text + text;
+                    // Prevent duplicate appends if the API sends partials
+                    if (last.text.endsWith(text)) return prev;
+                    return [...prev.slice(0, -1), { ...last, text: newText }];
                   }
                   return [...prev, { role: 'model', text }];
                 });
@@ -303,12 +317,14 @@ export function useLiveAPI(onAppCodeUpdate: (code: string) => void, currentAppCo
             }
 
             if (userTurn?.parts) {
-              const text = userTurn.parts.map((p: any) => p.text).filter(Boolean).join("");
+              const text = userTurn.parts.map((p: any) => p.text).filter((t: any) => t !== undefined).join("");
               if (text) {
                 setTranscript(prev => {
                   const last = prev[prev.length - 1];
                   if (last && last.role === 'user') {
-                    return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+                    const newText = last.text + text;
+                    if (last.text.endsWith(text)) return prev;
+                    return [...prev.slice(0, -1), { ...last, text: newText }];
                   }
                   return [...prev, { role: 'user', text }];
                 });

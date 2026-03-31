@@ -114,7 +114,14 @@ export default function App() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, transcript, learnedItems, connect, disconnect, setTranscript, setLearnedItems } = useLiveAPI(setAppCode, appCode, learningGoal, playbackSpeed);
+  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, transcript, learnedItems, connect, disconnect, setTranscript, setLearnedItems } = useLiveAPI(
+    setAppCode, 
+    appCode, 
+    learningGoal, 
+    playbackSpeed,
+    sessions.length,
+    sessions.flatMap(s => s.learnedItems.map(li => li.content))
+  );
 
   // Save session when disconnected and has content
   useEffect(() => {
