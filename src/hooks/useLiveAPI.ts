@@ -11,7 +11,9 @@ export function useLiveAPI(
   currentAppCode: string, 
   learningGoal: string = "General English", 
   sessionsCount: number = 0,
-  learnedItemsList: string[] = []
+  learnedItemsList: string[] = [],
+  masteryStats: any = {},
+  onMasteryUpdate: (stats: any) => void
 ) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -79,7 +81,7 @@ export function useLiveAPI(
     setSessionSummary("");
     respondedToolCallsRef.current.clear();
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
       gainNodeRef.current = playbackContextRef.current.createGain();
@@ -98,32 +100,37 @@ export function useLiveAPI(
           },
           outputAudioTranscription: {},
           inputAudioTranscription: {},
-          systemInstruction: `You are 'Ngenglish', a friendly and personal AI English learning assistant. Your goal is to help the user improve their English skills through conversation.
+          systemInstruction: `You are 'Ngenglish AI Agent', a proactive and intelligent personal English coach for TechnoFest 2026.
+          
+          MISSION: Reimagining the future of learning by being more than a chatbot. You are a coach that tracks progress, sets challenges, and proactively manages the user's growth.
           
           USER'S CURRENT LEARNING GOAL: ${learningGoal}
-          ${sessionsCount > 0 ? `This is a RETURNING USER. They have completed ${sessionsCount} sessions with you already.` : 'This is a NEW USER.'}
-          ${learnedItemsList.length > 0 ? `Items they have learned so far: ${learnedItemsList.join(', ')}.` : ''}
+          - SESSIONS COMPLETED: ${sessionsCount}
+          - ITEMS LEARNED: ${learnedItemsList.length > 0 ? learnedItemsList.join(', ') : 'None yet'}
+          - LEVEL: ${masteryStats.level || 'Novice'}
+          - XP: ${masteryStats.xp || 0}
+          - WORDS MASTERED: ${masteryStats.wordsMastered || 0}
+          - STREAK: ${masteryStats.streak || 0} days
 
-          Greet them in a mix of casual Indonesian and English. 
-          Focus on the goal: ${learningGoal}.
+          CRITICAL RULES:
+          1. DASHBOARD INITIALIZATION: Immediately upon connection, you MUST call 'updateAppCode' to initialize the Learning Dashboard with relevant data (Current Stats, Goals, and Missions). Do NOT wait for user input to update the UI.
+          2. INTERRUPTIONS: You are designed for real-time conversation. It is perfectly fine if the user interrupts you. Stop speaking immediately and listen.
+          3. PROACTIVE GREETING: Start the session by referencing progress. Ex: "Halo! Kemarin kita udah belajar ${learnedItemsList.slice(-2).join(' & ')}. Hari ini mau hajar ${learningGoal} lagi atau mau coba tantangan baru?"
+          4. CREATIVE MISSIONS: Periodically set "Creative Missions" to keep things exciting. (e.g., "Describe a cat without using the word 'animal'").
+          5. MASTERY TRACKING: Every time the user shows improvement, update their stats using 'updateMasteryStats'. Be generous with XP and words.
           
           TOOLS:
-          - updateAppCode: Use this to update the Learning Dashboard with visual content.
-          - logLearnedItem: Use this whenever you teach a new vocabulary word or grammar rule.
-          - updateSessionSummary: Use this periodically to maintain a live summary of the conversation.
+          - updateAppCode: Update the Learning Dashboard UI. (ALWAYS CALL THIS AT START).
+          - logLearnedItem: Log a specific vocab/grammar point.
+          - updateSessionSummary: Update the live markdown summary.
+          - updateMasteryStats: Update level, XP, and mastered word count.
           
-          You have a 'Learning Dashboard' (the iframe) where you can display helpful information.
-          
-          CRITICAL:
-          - Do NOT repeat yourself.
-          - Briefly explain what you are showing on the dashboard before calling the tool. 
-          - You can be interrupted by the user. If the user starts speaking, stop immediately and listen.
-          - Maintain a live summary of the session using 'updateSessionSummary'. Include key topics discussed and progress made.`,
+          Greet in a mix of casual Indonesian and English. Focus on the goal: ${learningGoal}.`,
           tools: [{
             functionDeclarations: [
               {
                 name: "updateAppCode",
-                description: "Updates the Learning Dashboard UI with educational content.",
+                description: "Updates the Learning Dashboard UI with educational content or interactive missions.",
                 parameters: {
                   type: Type.OBJECT,
                   properties: {
@@ -160,6 +167,19 @@ export function useLiveAPI(
                   },
                   required: ["summary"],
                 },
+              },
+              {
+                name: "updateMasteryStats",
+                description: "Update the user's overall learning progress metrics.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    xp: { type: Type.NUMBER, description: "Total XP points gained in this update." },
+                    wordsMastered: { type: Type.NUMBER, description: "Number of new words mastered in this update." },
+                    level: { type: Type.STRING, description: "Current proficiency level (e.g. Apprentice, Expert)." },
+                    streak: { type: Type.NUMBER, description: "Current login streak." }
+                  }
+                }
               }
             ]
           }]
@@ -323,6 +343,14 @@ export function useLiveAPI(
                     };
                     if (callId) responseObj.id = callId;
                     functionResponses.push(responseObj);
+                  } else if (call.name === 'updateMasteryStats') {
+                    onMasteryUpdate(call.args);
+                    const responseObj: any = {
+                      name: call.name || "updateMasteryStats",
+                      response: { output: { result: "success" } }
+                    };
+                    if (callId) responseObj.id = callId;
+                    functionResponses.push(responseObj);
                   } else {
                     const responseObj: any = {
                       name: call.name || "unknown",
@@ -385,5 +413,39 @@ export function useLiveAPI(
     return cleanup;
   }, [cleanup]);
 
-  return { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, connect, disconnect, setSessionSummary, setLearnedItems };
+  const sendText = useCallback((text: string) => {
+    if (sessionRef.current && isConnected) {
+      sessionRef.current.send({ parts: [{ text }] });
+    }
+  }, [isConnected]);
+
+  // Silence Detection Logic
+  const lastActivityTimeRef = useRef<number>(Date.now());
+  const silenceThreshold = 5000; // 5 seconds of silence
+
+  useEffect(() => {
+    if (!isConnected || isConnecting) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastActivity = now - lastActivityTimeRef.current;
+
+      // Only prompt if silence threshold exceeded, model is not speaking, and it's been active
+      if (timeSinceLastActivity > silenceThreshold && !isModelSpeaking) {
+        lastActivityTimeRef.current = now; // Reset timer to prevent rapid-fire prompts
+        sendText("[User has been silent for a while. Proactively check in or suggest something!]");
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isConnected, isConnecting, isModelSpeaking, sendText]);
+
+  // Update activity timestamp whenever there's audio or model speaks
+  useEffect(() => {
+    if (audioLevel > 0.05 || isModelSpeaking) {
+      lastActivityTimeRef.current = Date.now();
+    }
+  }, [audioLevel, isModelSpeaking]);
+
+  return { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, connect, disconnect, setSessionSummary, setLearnedItems, sendText };
 }

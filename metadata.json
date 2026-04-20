@@ -1,6 +1,6 @@
 {
-  "name": "Ngenglish",
-  "description": "An interactive English learning assistant powered by Gemini Live API. Practice speaking and get real-time feedback.",
+  "name": "Ngenglish AI Agent",
+  "description": "A proactive AI English Learning Agent for TechnoFest 2026. Features real-time voice coaching, mastery tracking, and creative learning missions.",
   "requestFramePermissions": [
     "microphone"
   ]

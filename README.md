@@ -1,104 +1,78 @@
-# Ngenglish 🎙️📚
+# Ngenglish 🎙️⚡
 
-**Ngenglish** is an interactive, voice-powered English learning assistant built with React and the **Google Gemini 3.1 Flash Live API**. It provides a natural, low-latency speaking environment where you can practice English with a friendly AI tutor that speaks your language (Indonesian/English mix).
+**Ngenglish** is a next-generation AI English Tutor built for the **TechnoFest 2026 Hackathon**. Powered by **Google Gemini 3.1 Flash Live API**, it offers a futuristic, low-latency, and highly proactive voice-learning experience.
+
+Unlike traditional apps, Ngenglish tracks your mastery from scratch, analyzing your fluency, vocabulary, and grammar in real-time as you speak.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Why Ngenglish is Different
 
-### 1. Real-time Voice Interaction
-Engage in natural conversations with 'Ngenglish'. Powered by Gemini's Live API, the interaction is fluid, low-latency, and supports interruptions just like a real person.
+### 1. Zero-to-Hero Mastery Tracking 📈
+All your stats start from **zero**. Watch your XP, Level, and "Words Mastered" grow dynamically based on your actual speech. Your progress is saved locally, so every "Level Up" feels real.
+- **Leveling System**: Gain 500 XP to advance your Proficiency Level.
+- **Words Mastered**: Real-time analysis of new vocabulary used.
+- **Streak Tuning**: Consistent daily practice is rewarded.
 
-### 2. Multimodal Learning Dashboard
-The tutor doesn't just talk; it *shows*. Ngenglish can dynamically update a visual dashboard to provide:
-- **Vocabulary Cards**: Definitions, examples, and pronunciation tips.
-- **Grammar Summaries**: Clear explanations of rules discussed in the session.
-- **Interactive Quizzes**: Multiple-choice and fill-in-the-blank exercises with instant feedback.
-- **Visual Aids**: High-quality images for description exercises and storytelling.
+### 2. Hyper-Proactive AI Agent 🤖
+Ngenglish doesn't just wait for you to talk. It’s alive:
+- **Silence Detection**: If you're stuck for more than 5 seconds, the agent will chime in with a guidance or a new topic.
+- **Interruptible Flow**: Talk over the agent anytime—it listens and stops immediately for a natural "human" flow.
+- **Proactive Greeting**: On connection, it immediately initializes your dashboard and welcomes you.
 
-### 3. Personalized Learning Goals
-Tailor your experience by selecting a specific focus:
-- **General English**: Everyday conversation and fluency.
-- **Business English**: Professional communication and terminology.
-- **TOEFL/IELTS Preparation**: Targeted practice for standardized tests.
-- **Travel English**: Essential phrases and scenarios for travelers.
-- **Academic Writing**: Formal structure and advanced vocabulary.
+### 3. Active Mission Grid 🎮
+Choose from dynamic challenges that push your limits:
+- **Speaking Marathon**: Maintain a fluent 5-minute conversation.
+- **Idiom Hunt**: Incorporate specific business idioms into your talk.
+- **Creative Storytelling**: Use past tense to weave a story and earn massive XP.
 
-### 4. Structured Speaking Exercises
-- **Role-Play**: Practice real-world scenarios (e.g., at a restaurant, job interview).
-- **Image Description**: Describe dynamic images to build descriptive vocabulary.
-- **Text Summary**: Read short articles and summarize them to practice comprehension.
-
-### 5. Session History & Progress Tracking
-- **Auto-Save**: Every session is automatically saved to your browser's local storage.
-- **Transcripts**: Review full transcripts of past conversations.
-- **Learned Items**: Track vocabulary and grammar points you've mastered over time.
-
-### 6. Customizable Experience
-- **Playback Speed**: Adjust the tutor's speaking rate from 0.8x to 1.5x.
-- **Dark/Light Mode**: Choose the interface that best suits your environment.
-- **Real-time Transcript**: See what's being said as it happens.
+### 4. Hardware-Inspired "Techno" UI 🌌
+A polished, hardware-aesthetic interface designed for focus:
+- **Integrated Sidebar**: Controls, stats (Mastery HUD), and memory history all in one place.
+- **Dashboard Iframe**: A clean, dedicated space where the AI "projects" learning materials, quizzes, and live feedback.
+- **Dark/Light Mode**: Unified styling for maximum comfort during late-night study sessions.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [React 19](https://react.dev/) with [Vite](https://vitejs.dev/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **AI Engine**: [Google Gemini 3.1 Flash Live API](https://ai.google.dev/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Framework**: [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **AI Core**: [Google Gemini 3.1 Flash Live API](https://ai.google.dev/)
+- **Styling**: [Tailwind CSS 4.0](https://tailwindcss.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Animations**: [Motion](https://motion.dev/)
-- **Persistence**: Browser LocalStorage
+- **State & Sync**: Browser LocalStorage + `window.postMessage` Interop
+- **Animations**: [Motion 12](https://motion.dev/)
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Hackathon Mode)
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- A Gemini API Key (Get one at [Google AI Studio](https://aistudio.google.com/))
+- Node.js (v20+)
+- A Gemini API Key from [Google AI Studio](https://aistudio.google.com/)
 
 ### Installation
 
-1. **Clone the repository** (or download the source).
-2. **Install dependencies**:
+1. **Setup**:
    ```bash
    npm install
    ```
-3. **Set up environment variables**:
-   Create a `.env` file in the root directory and add your API key:
-   ```env
-   GEMINI_API_KEY=your_api_key_here
-   ```
-4. **Start the development server**:
+2. **Key Config**:
+   Add `GEMINI_API_KEY` to your environment.
+3. **Run**:
    ```bash
    npm run dev
    ```
-5. **Open your browser** at `http://localhost:3000`.
 
 ---
 
-## 📖 How to Use
+## 📖 Pro-Tips for Demo
 
-1. **Select a Goal**: Choose your learning focus from the top-right dropdown.
-2. **Connect**: Click the microphone button to start the session.
-3. **Speak**: Start talking! You can ask questions, request a quiz, or just have a casual chat.
-4. **Interact**: Watch the dashboard on the right for visual aids and interactive exercises.
-5. **Review**: After disconnecting, check the **History** tab to see your progress and review past transcripts.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to open issues or submit pull requests to improve the tutor's capabilities or the user interface.
+1. **Start fresh**: Click the **Reset** button in the top right to clear all stats to 0.
+2. **Kickoff**: Use an **Active Challenge** to start the session with a specific goal.
+3. **Be Silent**: During the demo, stop talking for 5 seconds to show off the AI's proactive re-engagement.
+4. **Speak Over**: Demonstrate the interruption capability by asking a question while the AI is explaining something.
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-*Made with ❤︎ by mrbrightsides*
+*Made for TechnoFest 2026 Hackathon* 🚀🏆

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sun, Moon, History, BookOpen, Trash2, X, ArrowDown, Target, FileText } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sun, Moon, History, BookOpen, Trash2, X, ArrowDown, Target, FileText, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { useLiveAPI, LearnedItem } from './hooks/useLiveAPI';
@@ -20,70 +20,223 @@ interface Session {
   learnedItems: LearnedItem[];
 }
 
-const INITIAL_APP_CODE = `<!DOCTYPE html>
+interface MasteryStats {
+  xp: number;
+  level: string;
+  wordsMastered: number;
+  streak: number;
+}
+
+const DEFAULT_MASTERY: MasteryStats = {
+  xp: 0,
+  level: 'Apprentice',
+  wordsMastered: 0,
+  streak: 1
+};
+
+const getLevelProgress = (xp: number) => {
+  const xpPerLevel = 500;
+  const currentXPInLevel = xp % xpPerLevel;
+  const progress = (currentXPInLevel / xpPerLevel) * 100;
+  const levelNum = Math.floor(xp / xpPerLevel) + 1;
+  const xpNeeded = xpPerLevel - currentXPInLevel;
+  return { levelNum, progress, xpNeeded };
+};
+
+const getDashboardCode = (stats: MasteryStats) => {
+  const { levelNum, progress, xpNeeded } = getLevelProgress(stats.xp);
+  const wordsThisWeek = Math.floor(stats.wordsMastered * 0.15); 
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"><\/script>
+  <script src="https://unpkg.com/lucide@latest"><\/script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;600;700&display=swap');
+    :root {
+      --bg: #09090b;
+      --panel: #18181b;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.5);
+    }
+    body { 
+      font-family: 'Outfit', sans-serif; 
+      background: var(--bg);
+      color: #fafafa;
+      overflow-x: hidden;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass {
+      background: rgba(24, 24, 27, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .grid-bg {
+      background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+      background-size: 32px 32px;
+    }
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    .animate-pulse-slow { animation: pulse-slow 4s infinite; }
   </style>
 </head>
-<body class="bg-zinc-50 min-h-screen flex flex-col items-center justify-center p-6 md:p-12 text-center">
-  <div class="max-w-2xl w-full bg-white rounded-[2.5rem] shadow-2xl p-8 md:p-12 border border-zinc-100">
-    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+<body class="min-h-screen p-4 md:p-8 grid-bg">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 py-8">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span class="mono text-[10px] uppercase tracking-[0.3em] text-emerald-500 font-bold">System Online // AI Agent Active</span>
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Learning <span class="text-blue-500">Mastery</span></h1>
+        <p class="text-zinc-500 mt-2 max-w-md">Your personal AI learning agent is analyzing your speech patterns and vocabulary growth in real-time.</p>
+      </div>
+      <div class="flex gap-3">
+         <div class="glass p-3 px-6 rounded-2xl flex flex-col items-center justify-center">
+            <span class="mono text-[10px] uppercase text-zinc-500 mb-1">Current Streak</span>
+            <span class="text-2xl font-bold">${stats.streak} <span class="text-xs text-orange-500">DAYS</span></span>
+         </div>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Stats Sidebar -->
+      <div class="md:col-span-1 space-y-6">
+        <!-- Level Card -->
+        <div class="glass p-6 rounded-[2rem] relative overflow-hidden group">
+          <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all"></div>
+          <span class="mono text-[10px] uppercase text-blue-500 font-bold mb-4 block">Proficiency Level</span>
+          <div class="flex items-baseline gap-2 mb-6">
+            <span class="text-5xl font-bold tracking-tighter">LV. ${levelNum.toString().padStart(2, '0')}</span>
+            <span class="text-zinc-500 font-medium tracking-wide">${stats.level}</span>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[11px] mono uppercase text-zinc-400">
+              <span>Next Level in ${xpNeeded} XP</span>
+              <span class="text-blue-400">${Math.round(progress)}%</span>
+            </div>
+            <div class="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full" style="width: ${progress}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mastery Circle -->
+        <div class="glass p-6 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-center">
+           <div class="relative w-32 h-32 flex items-center justify-center">
+             <svg class="w-32 h-32 transform -rotate-90">
+               <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" class="text-zinc-800" />
+               <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" stroke-dasharray="364.4" stroke-dashoffset="${364.4 - (364.4 * (Math.min(stats.wordsMastered, 2000) / 2000))}" class="text-blue-500" stroke-linecap="round" />
+             </svg>
+             <div class="absolute flex flex-col items-center">
+                <span class="text-2xl font-bold">${stats.wordsMastered}</span>
+                <span class="mono text-[8px] uppercase text-zinc-500">Words Mastered</span>
+             </div>
+           </div>
+           <p class="text-[11px] text-zinc-500 leading-relaxed px-4">You've mastered ${wordsThisWeek} new words this week. Keep it up!</p>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="md:col-span-2 space-y-6">
+        <!-- Activity Grid -->
+        <div class="glass p-6 rounded-[2rem] h-full">
+          <header class="flex justify-between items-center mb-8">
+            <div class="flex items-center gap-2">
+              <i data-lucide="zap" class="w-4 h-4 text-orange-500"></i>
+              <h3 class="text-sm font-bold uppercase tracking-wider">Active Challenges</h3>
+            </div>
+            <span class="mono text-[10px] text-zinc-600">3 Pending Missions</span>
+          </header>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div 
+              onclick="window.parent.postMessage({ type: 'START_CHALLENGE', prompt: 'I want to start the 5-minute speaking fluency challenge!' }, '*')"
+              class="p-5 rounded-3xl bg-zinc-900/50 border border-zinc-800 hover:border-blue-500/50 transition-all cursor-pointer group"
+            >
+              <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-all">
+                <i data-lucide="mic" class="w-5 h-5 text-orange-500"></i>
+              </div>
+              <h4 class="font-bold text-sm mb-2">Speak for 5 Minutes</h4>
+              <p class="text-xs text-zinc-500 leading-relaxed">Improve your overall fluency by maintaining a long conversation.</p>
+              <div class="mt-4 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-orange-500" style="width: 60%"></div>
+              </div>
+            </div>
+
+            <div 
+              onclick="window.parent.postMessage({ type: 'START_CHALLENGE', prompt: 'Teach me 10 important business idioms today.' }, '*')"
+              class="p-5 rounded-3xl bg-zinc-900/50 border border-zinc-800 hover:border-purple-500/50 transition-all cursor-pointer group"
+            >
+              <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-all">
+                <i data-lucide="book" class="w-5 h-5 text-purple-500"></i>
+              </div>
+              <h4 class="font-bold text-sm mb-2">10 Business Idioms</h4>
+              <p class="text-xs text-zinc-500 leading-relaxed">Incorporate business-specific phrases into your speech today.</p>
+              <div class="mt-4 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                <div class="h-full bg-purple-500" style="width: 20%"></div>
+              </div>
+            </div>
+
+            <div 
+              onclick="window.parent.postMessage({ type: 'START_CHALLENGE', prompt: 'I want to do the Special Mission: Creative Story challenge!' }, '*')"
+              class="md:col-span-2 p-5 rounded-3xl bg-blue-500/5 border border-blue-500/10 flex items-center justify-between group cursor-pointer hover:bg-blue-500/10 transition-all"
+            >
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <i data-lucide="award" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                   <h4 class="font-bold text-sm">Special Mission: Creative Story</h4>
+                   <p class="text-xs text-zinc-500">Tell a story using only past tense. Reward: 250 XP</p>
+                </div>
+              </div>
+              <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-600 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <h1 class="text-3xl md:text-4xl font-bold text-zinc-900 mb-4 tracking-tight">Welcome to Ngenglish</h1>
-    <p class="text-zinc-500 text-sm md:text-base leading-relaxed mb-10 max-w-lg mx-auto">
-      Halo! Aku tutor AI personal kamu buat belajar bahasa Inggris. Klik mic di bawah buat mulai ngobrol. Pilih aktivitasnya atau langsung cuap-cuap aja!
-    </p>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-      <div class="p-5 bg-blue-50/50 rounded-3xl border border-blue-100/50 transition-all hover:bg-blue-50">
-        <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </div>
-        <h3 class="font-bold text-zinc-900 text-sm mb-1">Casual Conversation</h3>
-        <p class="text-zinc-500 text-xs leading-snug">Practice natural speaking on any topic you like.</p>
-      </div>
-      
-      <div class="p-5 bg-purple-50/50 rounded-3xl border border-purple-100/50 transition-all hover:bg-purple-50">
-        <div class="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <h3 class="font-bold text-zinc-900 text-sm mb-1">Interactive Quiz</h3>
-        <p class="text-zinc-500 text-xs leading-snug">Test your knowledge with dynamic grammar & vocab questions.</p>
-      </div>
-      
-      <div class="p-5 bg-emerald-50/50 rounded-3xl border border-emerald-100/50 transition-all hover:bg-emerald-50">
-        <div class="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        </div>
-        <h3 class="font-bold text-zinc-900 text-sm mb-1">Storytelling</h3>
-        <p class="text-zinc-500 text-xs leading-snug">Listen to or help create an immersive interactive story.</p>
-      </div>
-      
-      <div class="p-5 bg-orange-50/50 rounded-3xl border border-orange-100/50 transition-all hover:bg-orange-50">
-        <div class="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center mb-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </div>
-        <h3 class="font-bold text-zinc-900 text-sm mb-1">Fill-in-the-Blanks</h3>
-        <p class="text-zinc-500 text-xs leading-snug">A fun vocabulary exercise to master word usage in context.</p>
-      </div>
-    </div>
-    
-    <div class="mt-10 pt-8 border-t border-zinc-100">
-      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Made with ❤︎ by mrbrightsides</p>
+
+    <!-- Footer Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
+       <div class="glass p-4 rounded-2xl border-l-4 border-l-blue-500">
+          <span class="mono text-[8px] uppercase text-zinc-500 block mb-1">Vocabulary</span>
+          <span class="text-xl font-bold tracking-tight">${stats.wordsMastered.toLocaleString()} <span class="text-[10px] text-emerald-500">+${wordsThisWeek}</span></span>
+       </div>
+       <div class="glass p-4 rounded-2xl border-l-4 border-l-orange-500">
+          <span class="mono text-[8px] uppercase text-zinc-500 block mb-1">Fluency Rate</span>
+          <span class="text-xl font-bold tracking-tight">${Math.min(30 + levelNum * 5, 95)}% <span class="text-[10px] text-emerald-500">+1%</span></span>
+       </div>
+       <div class="glass p-4 rounded-2xl border-l-4 border-l-purple-500">
+          <span class="mono text-[8px] uppercase text-zinc-500 block mb-1">Grammar Score</span>
+          <span class="text-xl font-bold tracking-tight">${levelNum > 5 ? 'A-' : levelNum > 2 ? 'B+' : 'C'} <span class="text-[10px] text-emerald-500">STABLE</span></span>
+       </div>
+       <div class="glass p-4 rounded-2xl border-l-4 border-l-pink-500">
+          <span class="mono text-[8px] uppercase text-zinc-500 block mb-1">Total XP</span>
+          <span class="text-xl font-bold tracking-tight">${stats.xp.toLocaleString()} <span class="text-[10px] text-zinc-500">TOTAL</span></span>
+       </div>
     </div>
   </div>
+
+  <script>
+    lucide.createIcons();
+  <\/script>
 </body>
 </html>`;
+};
 
 export default function App() {
-  const [appCode, setAppCode] = useState<string>(INITIAL_APP_CODE);
+  const [masteryStats, setMasteryStats] = useState<MasteryStats>(DEFAULT_MASTERY);
+  const [appCode, setAppCode] = useState<string>(getDashboardCode(DEFAULT_MASTERY));
   const [showCode, setShowCode] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isLightMode, setIsLightMode] = useState<boolean>(false);
@@ -105,7 +258,33 @@ export default function App() {
         console.error("Failed to load sessions", e);
       }
     }
+
+    const savedMastery = localStorage.getItem('ngenglish_mastery');
+    if (savedMastery) {
+      try {
+        const parsed = JSON.parse(savedMastery);
+        setMasteryStats(parsed);
+        setAppCode(getDashboardCode(parsed));
+      } catch (e) {}
+    } else {
+      setAppCode(getDashboardCode(DEFAULT_MASTERY));
+    }
   }, []);
+
+  const handleMasteryUpdate = (newStats: Partial<MasteryStats>) => {
+    setMasteryStats(prev => {
+      const updated = {
+        ...prev,
+        xp: prev.xp + (newStats.xp || 0),
+        wordsMastered: prev.wordsMastered + (newStats.wordsMastered || 0),
+        level: newStats.level || prev.level,
+        streak: newStats.streak || prev.streak
+      };
+      localStorage.setItem('ngenglish_mastery', JSON.stringify(updated));
+      setAppCode(getDashboardCode(updated));
+      return updated;
+    });
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -114,13 +293,33 @@ export default function App() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, connect, disconnect, setSessionSummary, setLearnedItems } = useLiveAPI(
+  const { isConnected, isConnecting, error, audioLevel, isModelSpeaking, sessionSummary, learnedItems, connect, disconnect, setSessionSummary, setLearnedItems, sendText } = useLiveAPI(
     setAppCode, 
     appCode, 
     learningGoal, 
     sessions.length,
-    sessions.flatMap(s => s.learnedItems.map(li => li.content))
+    sessions.flatMap(s => s.learnedItems.map(li => li.content)),
+    masteryStats,
+    handleMasteryUpdate
   );
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'START_CHALLENGE') {
+        const { prompt } = event.data;
+        if (!isConnected) {
+          connect().then(() => {
+            // Give a small delay for connection to stabilize before sending text
+            setTimeout(() => sendText(prompt), 1000);
+          });
+        } else {
+          sendText(prompt);
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isConnected, connect, sendText]);
 
   // Save session when disconnected and has content
   useEffect(() => {
@@ -211,7 +410,21 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-white overflow-hidden font-sans text-zinc-900">
+    <div className={`relative w-full h-screen overflow-hidden font-sans ${isLightMode ? 'bg-[#E6E6E6]' : 'bg-[#09090b]'} ${isLightMode ? 'text-zinc-900' : 'text-zinc-100'}`}>
+      <style>{`
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .grid-mask {
+          background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+          background-size: 24px 24px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background: rgba(59, 130, 246, 0.2); 
+          border-radius: 10px; 
+        }
+      `}</style>
+      
       {/* Error Toast */}
       <AnimatePresence>
         {error && (
@@ -219,80 +432,126 @@ export default function App() {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="absolute top-6 left-1/2 bg-white/80 backdrop-blur-md border border-red-100 text-red-600 px-6 py-3 rounded-2xl text-sm shadow-xl z-50 flex items-center gap-3 min-w-[320px]"
+            className="absolute top-6 left-1/2 bg-red-500 text-white px-6 py-3 rounded-2xl text-xs font-bold tracking-wider shadow-xl z-50 flex items-center gap-3 min-w-[320px] uppercase glow-border border border-red-400/50"
           >
-            <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-4 h-4" />
-            </div>
+            <AlertCircle className="w-4 h-4" />
             <p className="font-medium">{error}</p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Always-visible app canvas */}
-      <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 bg-white overflow-hidden">
-        {/* Sidebar / Panel (Desktop: Side, Mobile: Full Screen based on tab) */}
+      <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 overflow-hidden grid-mask">
+        {/* Sidebar / Panel (Hardware Recipe) */}
         <AnimatePresence mode="wait">
           {(!isMobile || activeTab !== 'dashboard') && (
             <motion.div
               key={isMobile ? activeTab : 'sidebar'}
-              initial={isMobile ? { opacity: 0, y: 20 } : { width: 0, opacity: 0 }}
+              initial={isMobile ? { opacity: 0, scale: 0.95 } : { width: 0, opacity: 0 }}
               animate={isMobile 
-                ? { opacity: 1, y: 0, width: '100%', height: '100%' } 
-                : { width: showCode ? '33.333333%' : 0, opacity: showCode ? 1 : 0, height: '100%' }
+                ? { opacity: 1, scale: 1, width: '100%', height: '100%' } 
+                : { width: showCode ? '420px' : 0, opacity: showCode ? 1 : 0, height: '100%' }
               }
-              exit={isMobile ? { opacity: 0, y: 20 } : { width: 0, opacity: 0 }}
+              exit={isMobile ? { opacity: 0, scale: 0.95 } : { width: 0, opacity: 0 }}
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              className={`overflow-hidden p-6 shadow-inner shrink-0 flex flex-col ${isLightMode ? 'bg-zinc-50' : 'bg-zinc-950'} ${!isMobile && 'border-r border-zinc-200'}`}
+              className={`overflow-hidden flex flex-col relative shrink-0 ${isLightMode ? 'bg-[#f7f7f7]' : 'bg-[#151619]'} border-r border-zinc-800/50 shadow-2xl`}
             >
-              <div className="flex items-center justify-between mb-4 shrink-0">
-                <div className="flex gap-4">
+              <div className="absolute top-0 left-0 w-full h-1 bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] z-20"></div>
+              
+              {/* Hardware Header */}
+              <div className="p-6 md:p-8 space-y-6 shrink-0 relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 ring-1 ring-blue-400/30">
+                      <Target className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="font-black text-xl tracking-tighter uppercase italic">Ngenglish <span className="text-blue-500">Agent</span></h2>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Active Mode // TechnoFest 2026</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setIsLightMode(!isLightMode)}
+                      className={`p-2 rounded-xl transition-all border ${isLightMode ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'}`}
+                    >
+                      {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                    </button>
+                    {isMobile && (
+                      <button onClick={() => setActiveTab('dashboard')} className="p-2 text-zinc-400">
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mastery HUD */}
+                <div className="grid grid-cols-3 gap-2">
+                   <div className={`p-3 rounded-2xl border flex flex-col items-center justify-center ${isLightMode ? 'bg-white border-zinc-200' : 'bg-[#0c0c0e] border-zinc-800/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]'}`}>
+                      <span className="text-[8px] font-bold uppercase text-zinc-500 mb-1">XP Points</span>
+                      <span className="text-sm font-black mono tabular-nums text-blue-500">{masteryStats.xp}</span>
+                   </div>
+                   <div className={`p-3 rounded-2xl border flex flex-col items-center justify-center ${isLightMode ? 'bg-white border-zinc-200' : 'bg-[#0c0c0e] border-zinc-800/50'}`}>
+                      <span className="text-[8px] font-bold uppercase text-zinc-500 mb-1">Rank</span>
+                      <span className="text-xs font-black uppercase text-zinc-200">{masteryStats.level}</span>
+                   </div>
+                   <div className={`p-3 rounded-2xl border flex flex-col items-center justify-center ${isLightMode ? 'bg-white border-zinc-200' : 'bg-[#0c0c0e] border-zinc-800/50'}`}>
+                      <span className="text-[8px] font-bold uppercase text-zinc-500 mb-1">Streak</span>
+                      <span className="text-sm font-black mono text-orange-500">{masteryStats.streak}d</span>
+                   </div>
+                </div>
+
+                <div className="flex border-b border-zinc-800/30">
                   <button 
                     onClick={() => {
                       setView('tutor');
                       if (isMobile) setActiveTab('chat');
                     }}
-                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${(isMobile ? activeTab === 'chat' : view === 'tutor') ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
+                    className={`flex-1 pb-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all relative ${ (isMobile ? activeTab === 'chat' : view === 'tutor') ? 'text-blue-500' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
-                    Summary
+                    Control
+                    {(isMobile ? activeTab === 'chat' : view === 'tutor') && <motion.div layoutId="navGlow" className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
                   </button>
                   <button 
                     onClick={() => {
                       setView('history');
                       if (isMobile) setActiveTab('history');
                     }}
-                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${(isMobile ? activeTab === 'history' : view === 'history') ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-zinc-400' : 'text-zinc-600')}`}
+                    className={`flex-1 pb-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all relative ${ (isMobile ? activeTab === 'history' : view === 'history') ? 'text-blue-500' : 'text-zinc-500 hover:text-zinc-300'}`}
                   >
-                    History
+                    Memory
+                    {(isMobile ? activeTab === 'history' : view === 'history') && <motion.div layoutId="navGlow" className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}
                   </button>
                 </div>
-                
-                {(isMobile ? activeTab === 'chat' : view === 'tutor') && (
-                  <div className="relative group">
-                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-all ${isLightMode ? 'bg-white border-zinc-200 text-zinc-600' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>
-                      <Target className="w-3 h-3" />
+              </div>
+
+              <div 
+                ref={transcriptContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto custom-scrollbar relative px-6 md:px-8 pb-24 md:pb-8"
+              >
+                {(isMobile ? activeTab === 'chat' : view === 'tutor') ? (
+                  <div className="space-y-6 pr-2 pb-4">
+                    {/* Goal Selector Integrated */}
+                    <div className={`p-4 rounded-2xl border transition-all ${isLightMode ? 'bg-white border-zinc-200' : 'bg-zinc-900/50 border-zinc-800'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Target Objective</span>
+                         <Target className="w-3 h-3 text-blue-500" />
+                      </div>
                       <select 
                         value={learningGoal}
                         onChange={(e) => setLearningGoal(e.target.value)}
                         disabled={isConnected}
-                        className="bg-transparent text-[10px] font-bold uppercase tracking-tighter outline-none cursor-pointer disabled:cursor-not-allowed"
+                        className={`w-full bg-transparent text-sm font-bold outline-none cursor-pointer disabled:cursor-not-allowed ${isLightMode ? 'text-zinc-900' : 'text-zinc-100'}`}
                       >
                         {LEARNING_GOALS.map(goal => (
                           <option key={goal} value={goal}>{goal}</option>
                         ))}
                       </select>
                     </div>
-                  </div>
-                )}
-              </div>
 
-              <div 
-                ref={transcriptContainerRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto custom-scrollbar relative pb-24 md:pb-4"
-              >
-                {(isMobile ? activeTab === 'chat' : view === 'tutor') ? (
-                  <div className="space-y-6 pr-2 pb-4">
                     {sessionSummary.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full py-12 text-center">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${isLightMode ? 'bg-zinc-100 text-zinc-400' : 'bg-zinc-900 text-zinc-600'}`}>
@@ -422,6 +681,41 @@ export default function App() {
                   </p>
                 </div>
               )}
+
+              {/* Sidebar FOOTER: Relocated Connect Hub */}
+              <div className={`p-6 shrink-0 relative z-40 border-t ${isLightMode ? 'bg-white border-zinc-200' : 'bg-[#151619] border-zinc-800/50'}`}>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={isConnected ? disconnect : connect}
+                    disabled={isConnecting}
+                    className={`w-full relative group flex items-center justify-center p-4 rounded-2xl transition-all font-black uppercase tracking-[0.2em] text-[10px] overflow-hidden ${
+                      isConnected 
+                      ? 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.3)]' 
+                      : isConnecting 
+                        ? 'bg-zinc-800 text-zinc-500' 
+                        : 'bg-blue-600 text-white shadow-[0_0_25px_rgba(59,130,246,0.4)] hover:scale-[1.02] active:scale-95'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 relative z-10 transition-transform">
+                      {isConnecting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : isConnected ? (
+                        <Square className="w-4 h-4 fill-current" />
+                      ) : (
+                        <Mic className="w-5 h-5" />
+                      )}
+                      <span>{isConnecting ? 'Linking...' : isConnected ? 'Abort session' : 'Initiate Agent'}</span>
+                    </div>
+                  </button>
+
+                  <div className="flex items-center justify-center gap-3">
+                     <div className="flex items-center gap-2">
+                        <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-emerald-500 shadow-[0_0_5px_#10b981]' : 'bg-zinc-600'}`}></div>
+                        <span className="text-[8px] font-bold uppercase tracking-widest text-zinc-500">{isConnected ? 'System Voice Linked' : 'Voice Disconnected'}</span>
+                     </div>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -455,70 +749,32 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* Floating Mic Button */}
-      <motion.div 
-        layout
-        initial={false}
-        animate={{
-          left: isConnected ? (isMobile ? '50%' : '2rem') : '50%',
-          bottom: isConnected ? (isMobile ? '6rem' : '2rem') : (isMobile ? '7rem' : '6rem'),
-          x: '-50%',
-          scale: isConnected && isMobile ? 0.9 : 1
-        }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        className="absolute z-50"
-      >
-        <div className="relative group">
-          {/* Audio Level Ring */}
-          {isConnected && (
-            <motion.div
-              className="absolute rounded-full border-2 pointer-events-none"
-              style={{
-                inset: '-6px',
-                borderColor: isModelSpeaking 
-                  ? 'rgba(59, 130, 246, 0.5)' 
-                  : (isLightMode ? 'rgba(239, 68, 68, 0.4)' : 'rgba(24, 24, 27, 0.3)'),
-              }}
-              animate={{ 
-                scale: isModelSpeaking ? [1, 1.15, 1] : ringScale,
-                opacity: isModelSpeaking ? [0.4, 0.8, 0.4] : Math.min(audioLevel * 10, 1),
-              }}
-              transition={isModelSpeaking ? { duration: 1.2, repeat: Infinity } : { duration: 0.05 }}
-            />
-          )}
-
-          {/* Pulse effect when connected */}
-          {isConnected && (
-            <motion.div
-              animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className={`absolute -inset-4 rounded-full ${isLightMode ? 'bg-red-500/20' : 'bg-zinc-900/20'}`}
-            />
-          )}
-          
-          <button
-            onClick={isConnected ? disconnect : connect}
-            disabled={isConnecting}
-            className={`
-              relative flex items-center justify-center rounded-full 
-              transition-all duration-500
-              ${isConnected 
-                ? (isLightMode ? 'bg-white text-red-500 border border-red-100 w-12 h-12 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-zinc-800 text-red-400 border border-zinc-700 w-12 h-12 shadow-[0_20px_50px_rgba(0,0,0,0.3)]') 
-                : (isLightMode ? 'bg-white text-zinc-900 hover:scale-105 active:scale-95 border border-zinc-100 w-16 h-16 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-zinc-900 text-white hover:scale-105 active:scale-95 border border-zinc-800 w-16 h-16 shadow-[0_20px_50px_rgba(0,0,0,0.3)]')
-              }
-              ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-            `}
+      {/* Floating Status Indicator (Hidden sidebar or mobile dashboard) */}
+      <AnimatePresence>
+        {isConnected && (!showCode || (isMobile && activeTab === 'dashboard')) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-24 md:bottom-12 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto"
           >
-            {isConnecting ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : isConnected ? (
-              <MicOff className="w-5 h-5" />
-            ) : (
-              <Mic className="w-6 h-6" />
-            )}
-          </button>
-        </div>
-      </motion.div>
+            <button 
+              onClick={disconnect}
+              className={`flex items-center gap-3 px-6 py-3 rounded-full border backdrop-blur-xl transition-all ${isLightMode ? 'bg-white/80 border-blue-100 shadow-lg shadow-blue-500/10 text-zinc-600' : 'bg-zinc-900/80 border-blue-500/30 text-zinc-300'}`}
+            >
+               <motion.div 
+                 animate={{ scale: isModelSpeaking ? [1, 1.2, 1] : ringScale }}
+                 className={`w-2.5 h-2.5 rounded-full ${isModelSpeaking ? 'bg-blue-500 shadow-[0_0_10px_#3b82f6]' : 'bg-red-500'}`} 
+               />
+               <span className="text-[9px] font-black uppercase tracking-widest">
+                 {isModelSpeaking ? 'Agent Speaking' : 'Listening...'}
+               </span>
+               <div className="w-[1px] h-3 bg-zinc-700/50" />
+               <Square className="w-3 h-3 fill-current text-red-500" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
@@ -559,21 +815,15 @@ export default function App() {
 
       {/* Top Right Controls */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
-        <motion.button
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={() => setIsLightMode(!isLightMode)}
-          className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 backdrop-blur-md border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all shadow-sm"
-          title={isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
-        >
-          {isLightMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-        </motion.button>
-
-        {appCode !== INITIAL_APP_CODE && (
+        {appCode !== getDashboardCode(DEFAULT_MASTERY) && (
           <motion.button
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            onClick={() => setAppCode(INITIAL_APP_CODE)}
+            onClick={() => {
+              setMasteryStats(DEFAULT_MASTERY);
+              setAppCode(getDashboardCode(DEFAULT_MASTERY));
+              localStorage.removeItem('ngenglish_mastery');
+            }}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all shadow-sm font-medium text-sm"
             title="Reset to initial state"
           >
