@@ -417,7 +417,7 @@ export function useLiveAPI(
 
   const sendText = useCallback((text: string) => {
     if (sessionRef.current && isConnected) {
-      sessionRef.current.send({ parts: [{ text }] });
+      sessionRef.current.sendRealtimeInput({ text });
     }
   }, [isConnected]);
 
