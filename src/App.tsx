@@ -85,7 +85,7 @@ const getDashboardCode = (stats: MasteryStats) => {
     .animate-pulse-slow { animation: pulse-slow 4s infinite; }
   </style>
 </head>
-<body class="min-h-screen p-4 md:p-8 grid-bg">
+<body class="min-h-screen p-4 md:p-8 pb-28 md:pb-8 grid-bg">
   <div class="max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 py-8">
@@ -561,7 +561,7 @@ export default function App() {
           <div key="app" className="relative w-full h-full flex flex-col md:flex-row overflow-hidden">
             <div className="absolute inset-0 grid-mask opacity-10 pointer-events-none"></div>
             
-            <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 overflow-hidden">
+            <div className={`absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 overflow-hidden ${isMobile ? 'pb-20' : ''}`}>
         {/* Sidebar / Panel (Hardware Recipe) */}
         <AnimatePresence mode="wait">
           {(!isMobile || activeTab !== 'dashboard') && (
