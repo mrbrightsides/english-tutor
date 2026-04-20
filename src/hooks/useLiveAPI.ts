@@ -114,7 +114,7 @@ export function useLiveAPI(
 
           CRITICAL RULES:
           1. DASHBOARD INITIALIZATION: Immediately upon connection, you MUST call 'updateAppCode' to initialize the Learning Dashboard with relevant data (Current Stats, Goals, and Missions). Do NOT wait for user input to update the UI.
-          2. INTERRUPTIONS: You are designed for real-time conversation. It is perfectly fine if the user interrupts you. Stop speaking immediately and listen.
+          2. INTERRUPTIONS: You are a persistent coach. IGNORE background noise, coughs, and short interjections. Only stop if the user is clearly and intentionally taking the turn with a full sentence. Do not stop mid-sentence for brief sounds.
           3. PROACTIVE GREETING: Start the session by referencing progress. Ex: "Halo! Kemarin kita udah belajar ${learnedItemsList.slice(-2).join(' & ')}. Hari ini mau hajar ${learningGoal} lagi atau mau coba tantangan baru?"
           4. CREATIVE MISSIONS: Periodically set "Creative Missions" to keep things exciting. (e.g., "Describe a cat without using the word 'animal'").
           5. MASTERY TRACKING: Every time the user shows improvement, update their stats using 'updateMasteryStats'. Be generous with XP and words.
@@ -287,12 +287,14 @@ export function useLiveAPI(
             
             // Handle Interruption
             if (message.serverContent?.interrupted && playbackContextRef.current) {
-              playbackContextRef.current.close();
-              playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
-              gainNodeRef.current = playbackContextRef.current.createGain();
-              gainNodeRef.current.gain.value = 1.8;
-              gainNodeRef.current.connect(playbackContextRef.current.destination);
-              nextPlayTimeRef.current = playbackContextRef.current.currentTime;
+              // We'll let the current buffer finish playing instead of hard-cutting
+              // to make it more noise-resilient as requested.
+              // playbackContextRef.current.close();
+              // playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+              // gainNodeRef.current = playbackContextRef.current.createGain();
+              // gainNodeRef.current.gain.value = 1.8;
+              // gainNodeRef.current.connect(playbackContextRef.current.destination);
+              // nextPlayTimeRef.current = playbackContextRef.current.currentTime;
             }
 
             // Handle Tool Calls

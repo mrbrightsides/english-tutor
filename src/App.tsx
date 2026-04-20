@@ -467,7 +467,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            className="absolute inset-0 z-[100] bg-[#09090b] text-white flex flex-col items-center justify-center p-8 overflow-y-auto"
+            className="absolute inset-0 z-[100] bg-[#09090b] text-white flex flex-col items-center justify-start md:justify-center p-6 md:p-8 pt-12 md:pt-8 overflow-y-auto"
           >
             <div className="absolute inset-0 grid-mask opacity-20 pointer-events-none"></div>
             
@@ -477,14 +477,14 @@ export default function App() {
               transition={{ delay: 0.2 }}
               className="max-w-4xl w-full"
             >
-              <div className="flex flex-col items-center text-center mb-16">
-                <div className="w-20 h-20 rounded-3xl bg-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.4)] mb-8 ring-1 ring-blue-400/50">
-                  <Target className="w-10 h-10 text-white" />
+              <div className="flex flex-col items-center text-center mb-10 md:mb-16">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.4)] mb-6 md:mb-8 ring-1 ring-blue-400/50">
+                  <Target className="w-8 h-8 md:w-10 md:h-10 text-white" />
                 </div>
-                <h1 className="text-6xl md:text-8xl font-black tracking-tighter italic uppercase mb-4 leading-none">
+                <h1 className="text-5xl md:text-8xl font-black tracking-tighter italic uppercase mb-2 md:mb-4 leading-none">
                   Ngen<span className="text-blue-500">glish</span>
                 </h1>
-                <p className="text-zinc-500 font-bold uppercase tracking-[0.4em] text-sm md:text-base">
+                <p className="text-zinc-500 font-bold uppercase tracking-[0.3em] md:tracking-[0.4em] text-[10px] md:text-base">
                   TechnoFest 2026 // AI Learning Agent
                 </p>
               </div>
@@ -866,6 +866,16 @@ export default function App() {
                         <span className="text-[8px] font-bold uppercase tracking-widest text-zinc-500">{isConnected ? 'System Voice Linked' : 'Voice Disconnected'}</span>
                      </div>
                   </div>
+
+                  <div className="mt-4 pt-4 border-t border-zinc-800/50">
+                    <button
+                      onClick={resetAll}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-[9px] uppercase tracking-widest ${isLightMode ? 'bg-zinc-100 text-zinc-500 hover:text-zinc-900' : 'bg-zinc-900/50 text-zinc-500 hover:text-white border border-zinc-800/50'}`}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>System Reset</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -968,18 +978,9 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Right Controls */}
+      {/* Top Right Controls (Mobile Only Theme/Header) */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
-        <motion.button
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={resetAll}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border transition-all shadow-sm font-bold text-[10px] uppercase tracking-widest ${isLightMode ? 'bg-white/90 border-zinc-200 text-zinc-600 hover:text-zinc-900 shadow-xl' : 'bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:text-white'}`}
-          title="Reset All Progress"
-        >
-          <RotateCcw className="w-3 h-3" />
-          <span>System Reset</span>
-        </motion.button>
+        {/* Placeholder if we want other quick controls */}
       </div>
     </div>
   );
