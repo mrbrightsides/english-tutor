@@ -235,6 +235,7 @@ const getDashboardCode = (stats: MasteryStats) => {
 };
 
 export default function App() {
+  const [hasLaunched, setHasLaunched] = useState<boolean>(false);
   const [masteryStats, setMasteryStats] = useState<MasteryStats>(DEFAULT_MASTERY);
   const [appCode, setAppCode] = useState<string>(getDashboardCode(DEFAULT_MASTERY));
   const [showCode, setShowCode] = useState<boolean>(true);
@@ -250,6 +251,11 @@ export default function App() {
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const launched = localStorage.getItem('ngenglish_launched');
+    if (launched === 'true') {
+      setHasLaunched(true);
+    }
+
     const savedSessions = localStorage.getItem('english_tutor_sessions');
     if (savedSessions) {
       try {
@@ -392,7 +398,20 @@ export default function App() {
     }
   };
 
-  // Scale the audio ring
+  const launchApp = () => {
+    setHasLaunched(true);
+    localStorage.setItem('ngenglish_launched', 'true');
+  };
+
+  const resetAll = () => {
+    if (confirm('Reset all progress and see landing page again?')) {
+      localStorage.removeItem('ngenglish_mastery');
+      localStorage.removeItem('english_tutor_sessions');
+      localStorage.removeItem('ngenglish_launched');
+      window.location.reload();
+    }
+  };
+
   const ringScale = 1 + Math.min(audioLevel * 6, 0.8);
 
   const deleteSession = (id: string) => {
@@ -440,7 +459,81 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 overflow-hidden grid-mask">
+      <AnimatePresence mode="wait">
+        {!hasLaunched ? (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+            className="absolute inset-0 z-[100] bg-[#09090b] text-white flex flex-col items-center justify-center p-8 overflow-y-auto"
+          >
+            <div className="absolute inset-0 grid-mask opacity-20 pointer-events-none"></div>
+            
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="max-w-4xl w-full"
+            >
+              <div className="flex flex-col items-center text-center mb-16">
+                <div className="w-20 h-20 rounded-3xl bg-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.4)] mb-8 ring-1 ring-blue-400/50">
+                  <Target className="w-10 h-10 text-white" />
+                </div>
+                <h1 className="text-6xl md:text-8xl font-black tracking-tighter italic uppercase mb-4 leading-none">
+                  Ngen<span className="text-blue-500">glish</span>
+                </h1>
+                <p className="text-zinc-500 font-bold uppercase tracking-[0.4em] text-sm md:text-base">
+                  TechnoFest 2026 // AI Learning Agent
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+                {[
+                  { icon: <Mic className="text-blue-500" />, title: "Live Voice Tutoring", desc: "Speak naturally with low-latency AI that handles interruptions and corrections in real-time." },
+                  { icon: <Target className="text-emerald-500" />, title: "Mastery Tracking", desc: "Dynamic Level and XP system that responds to your fluency and vocabulary usage." },
+                  { icon: <FileText className="text-purple-500" />, title: "Visual Dashboard", desc: "Interactive cards, quizzes, and real-time summaries generated on the fly during your chat." },
+                  { icon: <Square className="text-orange-500" />, title: "Zero-to-Hero", desc: "Start from scratch and build a permanent local record of your English proficiency." }
+                ].map((feature, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 + i * 0.1 }}
+                    className="p-6 rounded-3xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm group hover:border-zinc-700 transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      {feature.icon}
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">{feature.title}</h3>
+                    <p className="text-zinc-500 text-sm leading-relaxed">{feature.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="flex flex-col items-center gap-6"
+              >
+                <button
+                  onClick={launchApp}
+                  className="px-12 py-5 bg-blue-600 rounded-2xl font-black uppercase tracking-[0.2em] text-sm hover:bg-blue-500 hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)]"
+                >
+                  Initiate Learning Protocol
+                </button>
+                <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
+                  Secure Local Instance // Ready for Hackathon Phase 01
+                </p>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        ) : (
+          <div key="app" className="relative w-full h-full flex flex-col md:flex-row overflow-hidden">
+            <div className="absolute inset-0 grid-mask opacity-10 pointer-events-none"></div>
+            
+            <div className="absolute inset-0 flex flex-col md:flex-row w-full h-full z-10 overflow-hidden">
         {/* Sidebar / Panel (Hardware Recipe) */}
         <AnimatePresence mode="wait">
           {(!isMobile || activeTab !== 'dashboard') && (
@@ -748,6 +841,9 @@ export default function App() {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  )}
+</AnimatePresence>
 
       {/* Floating Status Indicator (Hidden sidebar or mobile dashboard) */}
       <AnimatePresence>
@@ -815,22 +911,16 @@ export default function App() {
 
       {/* Top Right Controls */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
-        {appCode !== getDashboardCode(DEFAULT_MASTERY) && (
-          <motion.button
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={() => {
-              setMasteryStats(DEFAULT_MASTERY);
-              setAppCode(getDashboardCode(DEFAULT_MASTERY));
-              localStorage.removeItem('ngenglish_mastery');
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-md border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all shadow-sm font-medium text-sm"
-            title="Reset to initial state"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Reset</span>
-          </motion.button>
-        )}
+        <motion.button
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={resetAll}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border transition-all shadow-sm font-bold text-[10px] uppercase tracking-widest ${isLightMode ? 'bg-white/90 border-zinc-200 text-zinc-600 hover:text-zinc-900 shadow-xl' : 'bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:text-white'}`}
+          title="Reset All Progress"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>System Reset</span>
+        </motion.button>
       </div>
     </div>
   );
