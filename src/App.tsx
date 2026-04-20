@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sun, Moon, History, BookOpen, Trash2, X, ArrowDown, Target, FileText, Square } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sun, Moon, History, BookOpen, Trash2, X, ArrowDown, Target, FileText, Square, Cpu, BrainCircuit, Zap, MonitorPlay } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { useLiveAPI, LearnedItem } from './hooks/useLiveAPI';
@@ -247,6 +247,7 @@ export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
+  const [isGoalSelectorOpen, setIsGoalSelectorOpen] = useState<boolean>(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
@@ -490,17 +491,17 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
                 {[
-                  { icon: <Mic className="text-blue-500" />, title: "Live Voice Tutoring", desc: "Speak naturally with low-latency AI that handles interruptions and corrections in real-time." },
-                  { icon: <Target className="text-emerald-500" />, title: "Mastery Tracking", desc: "Dynamic Level and XP system that responds to your fluency and vocabulary usage." },
-                  { icon: <FileText className="text-purple-500" />, title: "Visual Dashboard", desc: "Interactive cards, quizzes, and real-time summaries generated on the fly during your chat." },
-                  { icon: <Square className="text-orange-500" />, title: "Zero-to-Hero", desc: "Start from scratch and build a permanent local record of your English proficiency." }
+                  { icon: <Cpu className="text-blue-500" />, title: "Autonomous Voice Core", desc: "Self-correcting AI that independently adjusts its teaching style based on your unique linguistic patterns in real-time." },
+                  { icon: <BrainCircuit className="text-emerald-500" />, title: "Context-Aware Memory", desc: "The agent maintains a persistent long-term memory of your progress, evolving as you learn without manual configuration." },
+                  { icon: <Zap className="text-purple-500" />, title: "Dynamic Synthesis", desc: "Autonomous generation of quizzes and summaries, synthesized instantly from the context of your spoken conversations." },
+                  { icon: <MonitorPlay className="text-orange-500" />, title: "Reactive Interface", desc: "A real-time bridge between voice interaction and visual feedback, providing an autonomous multi-modal learning experience." }
                 ].map((feature, i) => (
                   <motion.div 
                     key={i}
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.4 + i * 0.1 }}
-                    className="p-6 rounded-3xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm group hover:border-zinc-700 transition-all"
+                    className="p-6 rounded-3xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm group hover:border-zinc-700 transition-all flex flex-col items-center text-center md:items-start md:text-left"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       {feature.icon}
@@ -510,6 +511,33 @@ export default function App() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* Hackathon Criteria Section: Autonomous Logic */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 }}
+                className="mb-16 border-t border-zinc-800 pt-12"
+              >
+                <div className="flex items-center gap-3 mb-8">
+                   <div className="w-1 h-10 bg-blue-600 rounded-full"></div>
+                   <h2 className="text-2xl font-black uppercase tracking-[0.2em]">Autonomous Agent Logic</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">
+                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest block mb-2">01 // Proactive Probing</span>
+                    <p className="text-xs text-zinc-400">Agent autonomously analyzes silence and hesitation to trigger proactive supportive prompts without user input.</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest block mb-2">02 // Dynamic Synthesis</span>
+                    <p className="text-xs text-zinc-400">Context-aware memory synthesis: The dashboard independently mutates based on the semantic flow of the conversation.</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">
+                    <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest block mb-2">03 // Adaptive HUD</span>
+                    <p className="text-xs text-zinc-400">Self-evolving interface that shifts focus between grammar, vocabulary, or pronunciation as the AI perceives weaknesses.</p>
+                  </div>
+                </div>
+              </motion.div>
 
               <motion.div 
                 initial={{ y: 20, opacity: 0 }}
@@ -627,22 +655,53 @@ export default function App() {
               >
                 {(isMobile ? activeTab === 'chat' : view === 'tutor') ? (
                   <div className="space-y-6 pr-2 pb-4">
-                    {/* Goal Selector Integrated */}
-                    <div className={`p-4 rounded-2xl border transition-all ${isLightMode ? 'bg-white border-zinc-200' : 'bg-zinc-900/50 border-zinc-800'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Target Objective</span>
-                         <Target className="w-3 h-3 text-blue-500" />
+                    {/* Goal Selector Integrated - Custom Dropdown for Visibility */}
+                    <div className="relative">
+                      <div className={`p-4 rounded-2xl border transition-all ${isLightMode ? 'bg-white border-zinc-200' : 'bg-zinc-900/50 border-zinc-800'} ${isGoalSelectorOpen ? 'ring-2 ring-blue-500/50' : ''}`}>
+                        <div className="flex items-center justify-between mb-3">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Target Objective</span>
+                           <Target className="w-3 h-3 text-blue-500" />
+                        </div>
+                        <button 
+                          onClick={() => !isConnected && setIsGoalSelectorOpen(!isGoalSelectorOpen)}
+                          disabled={isConnected}
+                          className={`w-full flex items-center justify-between text-left text-sm font-bold outline-none cursor-pointer disabled:cursor-not-allowed ${isLightMode ? 'text-zinc-900' : 'text-zinc-100'}`}
+                        >
+                          <span>{learningGoal}</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isGoalSelectorOpen ? 'rotate-180' : ''}`} />
+                        </button>
                       </div>
-                      <select 
-                        value={learningGoal}
-                        onChange={(e) => setLearningGoal(e.target.value)}
-                        disabled={isConnected}
-                        className={`w-full bg-transparent text-sm font-bold outline-none cursor-pointer disabled:cursor-not-allowed ${isLightMode ? 'text-zinc-900' : 'text-zinc-100'}`}
-                      >
-                        {LEARNING_GOALS.map(goal => (
-                          <option key={goal} value={goal}>{goal}</option>
-                        ))}
-                      </select>
+
+                      <AnimatePresence>
+                        {isGoalSelectorOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 5, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className={`absolute top-full left-0 w-full z-[100] mt-1 p-2 rounded-2xl border shadow-2xl backdrop-blur-xl ${isLightMode ? 'bg-white/90 border-zinc-200' : 'bg-[#151619]/90 border-zinc-800'}`}
+                          >
+                            <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar">
+                              {LEARNING_GOALS.map(goal => (
+                                <button
+                                  key={goal}
+                                  onClick={() => {
+                                    setLearningGoal(goal);
+                                    setIsGoalSelectorOpen(false);
+                                  }}
+                                  className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between group ${
+                                    learningGoal === goal 
+                                    ? 'bg-blue-600 text-white' 
+                                    : isLightMode ? 'hover:bg-zinc-100 text-zinc-600' : 'hover:bg-zinc-800 text-zinc-300'
+                                  }`}
+                                >
+                                  {goal}
+                                  {learningGoal === goal && <Target className="w-3 h-3" />}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {sessionSummary.length === 0 ? (
